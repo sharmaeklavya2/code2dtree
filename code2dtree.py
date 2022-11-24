@@ -5,6 +5,12 @@
 class Expr:
     globalDTreeGen = None
 
+    def key(self):
+        return NotImplementedError()
+
+    def __hash__(self):
+        return hash(self.key())
+
     def __bool__(self):
         if Expr.globalDTreeGen is not None:
             return Expr.globalDTreeGen.reportFork(self)
@@ -25,6 +31,9 @@ class BinExpr(Expr):
     def __str__(self):
         return '({} {} {})'.format(str(self.larg), str(self.op), str(self.rarg))
 
+    def key(self):
+        return (self.__class__.__name__, self.op, self.larg, self.rarg)
+
 
 class Var(Expr):
     def __init__(self, name):
@@ -35,6 +44,9 @@ class Var(Expr):
 
     def __str__(self):
         return self.name
+
+    def key(self):
+        return (self.__class__.__name__, self.name)
 
 
 BIN_OPS = {
@@ -118,12 +130,18 @@ class DINode(DNode):
 
 
 class RepeatedRunDTreeGen:
-    def __init__(self):
+    def __init__(self, useCache=True):
         self.depth = 0
         self.root = None
         self.activeLeaf = None
         self.boolStack = []
         self.finished = False
+        self.useCache = useCache
+        self.cachedValues = {}
+        """
+        Let c be the nodes consisting of self.activeLeaf and its ancestors, ordered root-first.
+        Then len(c) == len(self.boolStack), and self.boolStack[i] is the value of c.expr.
+        """
 
     def __repr__(self):
         return 'RRDTG(depth={}, root={}, aLeaf={}, bstk={}, fin={})'.format(self.depth,
@@ -132,6 +150,11 @@ class RepeatedRunDTreeGen:
     def reportFork(self, expr):
         assert not(self.finished)
         assert self.depth <= len(self.boolStack)
+        if self.useCache:
+            try:
+                return self.cachedValues[expr.key()]
+            except KeyError:
+                pass
         if self.depth == len(self.boolStack):
             node = DINode(expr, self.activeLeaf)
             if self.activeLeaf is not None:
@@ -141,6 +164,8 @@ class RepeatedRunDTreeGen:
             self.activeLeaf = node
             self.boolStack.append(False)
         result = self.boolStack[self.depth]
+        if self.useCache:
+            self.cachedValues[expr.key()] = result
         self.depth += 1
         return result
 
@@ -160,6 +185,8 @@ class RepeatedRunDTreeGen:
             self.boolStack[-1] = True
         else:
             self.finished = True
+        if self.useCache:
+            self.cachedValues.clear()
         self.depth = 0
 
     def runOnce(self, func, *args, **kwargs):
