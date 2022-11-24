@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
-from code2dtree import Var, RepeatedRunDTreeGen
+import argparse
+from code2dtree import Var, RepeatedRunDTreeGen, toVE, printGraphViz
 
 
 def selectionSorted(a):
@@ -15,12 +16,21 @@ def selectionSorted(a):
 
 
 def main():
-    n = int(input('Enter number of elements in list to sort: '))
-    a = [Var('x'+str(i)) for i in range(n)]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('n', type=int, help='number of elements in list to sort')
+    parser.add_argument('-o', '--output', help='path to dot output file')
+    args = parser.parse_args()
+
+    a = [Var('x'+str(i)) for i in range(args.n)]
     print('input:', a)
     gen = RepeatedRunDTreeGen()
     gen.run(selectionSorted, a)
-    gen.root.print(sys.stdout)
+    if args.output is not None:
+        V, E = toVE(gen.root)
+        with open(args.output, 'w') as fp:
+            printGraphViz(V, E, fp)
+    else:
+        gen.root.print(sys.stdout)
 
 
 if __name__ == '__main__':

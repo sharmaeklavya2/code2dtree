@@ -152,6 +152,39 @@ class DINode(DNode):
             self.children[0].print(fp, indent+1)
 
 
+def toVE(root):
+    V = []
+    E = []
+    id = 0
+
+    def explore(u, ui):
+        nonlocal id
+        V.append(u)
+        if isinstance(u, DINode):
+            if u.children[0] is not None:
+                id += 1
+                vi = id
+                E.append((ui, vi, 0))
+                explore(u.children[0], vi)
+            if u.children[1] is not None:
+                id += 1
+                vi = id
+                E.append((ui, vi, 1))
+                explore(u.children[1], vi)
+
+    explore(root, 0)
+    return (V, E)
+
+
+def printGraphViz(V, E, fp):
+    print('digraph DTree{', file=fp)
+    for i, v in enumerate(V):
+        print('v{} [label="{}"];'.format(i, prettyExprRepr(v.expr)), file=fp)
+    for (u, v, label) in E:
+        print('v{} -> v{} [label="{}"];'.format(u, v, label), file=fp)
+    print('}', file=fp)
+
+
 # [ RepeatedRunDTreeGen ] =====================================================
 
 
