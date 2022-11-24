@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from code2dtree import Var, RepeatedRunDTreeGen, toVE, printGraphViz
+from code2dtree import Var, func2dtree, toVE, printGraphViz
 from typing import Any
 
 
@@ -24,16 +24,13 @@ def main() -> None:
 
     a = [Var('x'+str(i)) for i in range(args.n)]
     print('input:', a)
-    gen = RepeatedRunDTreeGen()
-    gen.run(selectionSorted, a)
-    if gen.root is None:
-        print('empty decision tree')
-    elif args.output is not None:
-        V, E = toVE(gen.root)
+    dtree = func2dtree(selectionSorted, a)
+    if args.output is not None:
+        V, E = toVE(dtree)
         with open(args.output, 'w') as fp:
             printGraphViz(V, E, fp)
     else:
-        gen.root.print(sys.stdout)
+        dtree.print(sys.stdout)
 
 
 if __name__ == '__main__':

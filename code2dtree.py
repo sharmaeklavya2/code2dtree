@@ -275,3 +275,10 @@ class RepeatedRunDTreeGen:
             result = func(*args, **kwargs)
             self.reportEnd(result)
         Expr.globalDTreeGen = None
+
+
+def func2dtree(func: Callable[..., object], *args: object, **kwargs: object) -> DNode:
+    gen = RepeatedRunDTreeGen()
+    gen.run(func, *args, **kwargs)
+    assert gen.root is not None
+    return gen.root
