@@ -9,7 +9,7 @@ class Expr:
         return NotImplementedError()
 
     def __hash__(self):
-        return hash(self.key())
+        return 0
 
     def __bool__(self):
         if Expr.globalDTreeGen is not None:
@@ -32,7 +32,7 @@ class BinExpr(Expr):
         return '({} {} {})'.format(str(self.larg), str(self.op), str(self.rarg))
 
     def key(self):
-        return (self.__class__.__name__, self.op, self.larg, self.rarg)
+        return (self.__class__.__name__, self.op, self.larg.key(), self.rarg.key())
 
 
 class Var(Expr):
