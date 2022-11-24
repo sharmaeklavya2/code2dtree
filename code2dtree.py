@@ -9,7 +9,7 @@ class Expr:
     globalDTreeGen = None
 
     def key(self):
-        return NotImplementedError()
+        raise NotImplementedError()
 
     def __hash__(self):
         return 0
@@ -18,7 +18,7 @@ class Expr:
         if Expr.globalDTreeGen is not None:
             return Expr.globalDTreeGen.reportFork(self)
         else:
-            raise NotImplementedError("forking on expressions is not yet implemented")
+            raise NotImplementedError("forking on expressions is disabled.")
 
 
 class BinExpr(Expr):
