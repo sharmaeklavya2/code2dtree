@@ -1,20 +1,23 @@
 # coding: utf-8
 
+from __future__ import annotations
+import sys
 from collections.abc import Iterable, Mapping
+from typing import Callable, Optional, TextIO
 
 
 # [ Expr ] ====================================================================
 
 class Expr:
-    globalDTreeGen = None
+    globalDTreeGen: Optional[RepeatedRunDTreeGen] = None
 
-    def key(self):
+    def key(self) -> object:
         raise NotImplementedError()
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return 0
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         if Expr.globalDTreeGen is not None:
             return Expr.globalDTreeGen.reportFork(self)
         else:
@@ -22,33 +25,33 @@ class Expr:
 
 
 class BinExpr(Expr):
-    def __init__(self, op, larg, rarg):
+    def __init__(self, op: str, larg: Expr, rarg: Expr):
         self.op = op
         self.larg = larg
         self.rarg = rarg
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({}, {}, {})'.format(self.__class__.__name__, repr(self.op),
             repr(self.larg), repr(self.rarg))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return '({} {} {})'.format(str(self.larg), str(self.op), str(self.rarg))
 
-    def key(self):
+    def key(self) -> object:
         return (self.__class__.__name__, self.op, self.larg.key(), self.rarg.key())
 
 
 class Var(Expr):
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({})'.format(self.__class__.__name__, repr(self.name))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def key(self):
+    def key(self) -> object:
         return (self.__class__.__name__, self.name)
 
 
@@ -72,17 +75,20 @@ BIN_OPS = {
 }
 
 
-def getBinMethods(op):
-    def binMethod(self, other):
+BinExprFunc = Callable[[Expr, Expr], BinExpr]
+
+
+def getBinMethods(op: str) -> tuple[BinExprFunc, BinExprFunc]:
+    def binMethod(self: Expr, other: Expr) -> BinExpr:
         return BinExpr(op, self, other)
 
-    def rbinMethod(self, other):
+    def rbinMethod(self: Expr, other: Expr) -> BinExpr:
         return BinExpr(op, other, self)
 
     return (binMethod, rbinMethod)
 
 
-def overloadOps():
+def overloadOps() -> None:
     for op, pyopname in BIN_OPS.items():
         func, rfunc = getBinMethods(op)
         setattr(Expr, '__' + pyopname + '__', func)
@@ -92,7 +98,7 @@ def overloadOps():
 overloadOps()
 
 
-def prettyExprRepr(x):
+def prettyExprRepr(x: object) -> str:
     if isinstance(x, str):
         return repr(x)
     elif isinstance(x, Expr):
@@ -118,27 +124,27 @@ def prettyExprRepr(x):
 # [ DNode ] ===================================================================
 
 class DNode:
-    def __init__(self, expr, parent):
+    def __init__(self, expr: object, parent: Optional[DNode]):
         self.expr = expr
         self.parent = parent
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({})'.format(self.__class__.__name__, self.expr)
 
-    def print(self, fp, indent=0):
+    def print(self, fp: TextIO, indent: int = 0) -> None:
         print('  ' * indent + 'return ' + prettyExprRepr(self.expr), file=fp)
 
 
 class DINode(DNode):
-    def __init__(self, expr, parent):
+    def __init__(self, expr: Expr, parent: Optional[DNode]):
         super().__init__(expr, parent)
-        self.children = [None, None]
+        self.children: list[Optional[DNode]] = [None, None]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({}, 0={}, 1={})'.format(self.__class__.__name__, self.expr,
             self.children[0], self.children[1])
 
-    def print(self, fp, indent=0):
+    def print(self, fp: TextIO, indent: int = 0) -> None:
         print('  ' * indent + 'if ' + prettyExprRepr(self.expr) + ':', file=fp)
         noneString = '  ' * (indent + 1) + 'unfinished'
         if self.children[1] is None:
@@ -152,12 +158,15 @@ class DINode(DNode):
             self.children[0].print(fp, indent+1)
 
 
-def toVE(root):
+GraphEdge = tuple[int, int, int]
+
+
+def toVE(root: Optional[DNode]) -> tuple[list[DNode], list[GraphEdge]]:
     V = []
     E = []
     id = 0
 
-    def explore(u, ui):
+    def explore(u: DNode, ui: int) -> None:
         nonlocal id
         V.append(u)
         if isinstance(u, DINode):
@@ -172,14 +181,17 @@ def toVE(root):
                 E.append((ui, vi, 1))
                 explore(u.children[1], vi)
 
-    explore(root, 0)
+    if root is not None:
+        explore(root, 0)
+    else:
+        print('Warning: empty tree passed to toVE', file=sys.stderr)
     return (V, E)
 
 
-def printGraphViz(V, E, fp):
+def printGraphViz(V: list[DNode], E: list[GraphEdge], fp: TextIO) -> None:
     print('digraph DTree{', file=fp)
-    for i, v in enumerate(V):
-        print('v{} [label="{}"];'.format(i, prettyExprRepr(v.expr)), file=fp)
+    for i, w in enumerate(V):
+        print('v{} [label="{}"];'.format(i, prettyExprRepr(w.expr)), file=fp)
     for (u, v, label) in E:
         print('v{} -> v{} [label="{}"];'.format(u, v, label), file=fp)
     print('}', file=fp)
@@ -189,24 +201,24 @@ def printGraphViz(V, E, fp):
 
 
 class RepeatedRunDTreeGen:
-    def __init__(self, useCache=True):
+    def __init__(self, useCache: bool = True):
         self.depth = 0
-        self.root = None
-        self.activeLeaf = None
-        self.boolStack = []
+        self.root: Optional[DNode] = None
+        self.activeLeaf: Optional[DNode] = None
+        self.boolStack: list[bool] = []
         self.finished = False
         self.useCache = useCache
-        self.cachedValues = {}
+        self.cachedValues: dict[object, bool] = {}
         """
         Let c be the nodes consisting of self.activeLeaf and its ancestors, ordered root-first.
         Then len(c) == len(self.boolStack), and self.boolStack[i] is the value of c.expr.
         """
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'RRDTG(depth={}, root={}, aLeaf={}, bstk={}, fin={})'.format(self.depth,
             repr(self.root), repr(self.activeLeaf), repr(self.boolStack), self.finished)
 
-    def reportFork(self, expr):
+    def reportFork(self, expr: Expr) -> bool:
         assert not(self.finished)
         assert self.depth <= len(self.boolStack)
         if self.useCache:
@@ -217,6 +229,7 @@ class RepeatedRunDTreeGen:
         if self.depth == len(self.boolStack):
             node = DINode(expr, self.activeLeaf)
             if self.activeLeaf is not None:
+                assert isinstance(self.activeLeaf, DINode)
                 self.activeLeaf.children[self.boolStack[-1]] = node
             else:
                 self.root = node
@@ -228,16 +241,18 @@ class RepeatedRunDTreeGen:
         self.depth += 1
         return result
 
-    def reportEnd(self, expr):
+    def reportEnd(self, expr: object) -> None:
         assert not(self.finished)
         assert self.depth == len(self.boolStack)
         node = DNode(expr, self.activeLeaf)
         if self.activeLeaf is not None:
+            assert isinstance(self.activeLeaf, DINode)
             self.activeLeaf.children[self.boolStack[-1]] = node
         else:
             self.root = node
 
         while len(self.boolStack) and self.boolStack[-1]:
+            assert self.activeLeaf is not None  # since boolStack is not empty
             self.boolStack.pop()
             self.activeLeaf = self.activeLeaf.parent
         if len(self.boolStack):
@@ -248,13 +263,13 @@ class RepeatedRunDTreeGen:
             self.cachedValues.clear()
         self.depth = 0
 
-    def runOnce(self, func, *args, **kwargs):
+    def runOnce(self, func: Callable[..., object], *args: object, **kwargs: object) -> None:
         Expr.globalDTreeGen = self
         result = func(*args, **kwargs)
         self.reportEnd(result)
         Expr.globalDTreeGen = None
 
-    def run(self, func, *args, **kwargs):
+    def run(self, func: Callable[..., object], *args: object, **kwargs: object) -> None:
         Expr.globalDTreeGen = self
         while not(self.finished):
             result = func(*args, **kwargs)

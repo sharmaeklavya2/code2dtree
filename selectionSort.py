@@ -3,9 +3,10 @@
 import sys
 import argparse
 from code2dtree import Var, RepeatedRunDTreeGen, toVE, printGraphViz
+from typing import Any
 
 
-def selectionSorted(a):
+def selectionSorted(a: list[Any]) -> list[Any]:
     a = a.copy()
     n = len(a)
     for i in range(n):
@@ -15,7 +16,7 @@ def selectionSorted(a):
     return a
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('n', type=int, help='number of elements in list to sort')
     parser.add_argument('-o', '--output', help='path to dot output file')
@@ -25,7 +26,9 @@ def main():
     print('input:', a)
     gen = RepeatedRunDTreeGen()
     gen.run(selectionSorted, a)
-    if args.output is not None:
+    if gen.root is None:
+        print('empty decision tree')
+    elif args.output is not None:
         V, E = toVE(gen.root)
         with open(args.output, 'w') as fp:
             printGraphViz(V, E, fp)
