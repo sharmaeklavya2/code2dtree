@@ -1,5 +1,8 @@
 # coding: utf-8
 
+from collections.abc import Iterable, Mapping
+
+
 # [ Expr ] ====================================================================
 
 class Expr:
@@ -89,6 +92,29 @@ def overloadOps():
 overloadOps()
 
 
+def prettyExprRepr(x):
+    if isinstance(x, str):
+        return repr(x)
+    elif isinstance(x, Expr):
+        s = str(x)
+        return s[1:-1] if s[0] == '(' else s
+    elif isinstance(x, Iterable):
+        csv = ', '.join([prettyExprRepr(y) for y in x])
+        if isinstance(x, tuple):
+            return '(' + csv + ')'
+        elif isinstance(x, set):
+            return '{' + csv + '}'
+        elif isinstance(x, list):
+            return '[' + csv + ']'
+        else:
+            return '{}([{}])'.format(x.__class__.__name__, csv)
+    elif isinstance(x, Mapping):
+        return '{' + ', '.join([prettyExprRepr(k) + ': ' + prettyExprRepr(v)
+            for k, v in x.items()]) + '}'
+    else:
+        return repr(x)
+
+
 # [ DNode ] ===================================================================
 
 class DNode:
@@ -100,7 +126,7 @@ class DNode:
         return '{}({})'.format(self.__class__.__name__, self.expr)
 
     def print(self, fp, indent=0):
-        print('  ' * indent + 'return ' + str(self.expr), file=fp)
+        print('  ' * indent + 'return ' + prettyExprRepr(self.expr), file=fp)
 
 
 class DINode(DNode):
@@ -113,7 +139,7 @@ class DINode(DNode):
             self.children[0], self.children[1])
 
     def print(self, fp, indent=0):
-        print('  ' * indent + 'if ' + str(self.expr) + ':', file=fp)
+        print('  ' * indent + 'if ' + prettyExprRepr(self.expr) + ':', file=fp)
         noneString = '  ' * (indent + 1) + 'unfinished'
         if self.children[1] is None:
             print(noneString, file=fp)
