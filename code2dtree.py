@@ -116,56 +116,17 @@ class DINode(DNode):
 
 # [ RepeatedRunDTreeGen ] =====================================================
 
-class BoolStack:
-    def __init__(self):
-        self.a = []
-
-    def __len__(self):
-        return len(self.a)
-
-    def __str__(self):
-        return str(self.a)
-
-    def __repr__(self):
-        return repr(self.a)
-
-    def push(self, b):
-        assert isinstance(b, bool)
-        self.a.append(b)
-
-    def top(self):
-        if self.a:
-            return self.a[-1]
-        else:
-            raise IndexError('BoolStack is empty')
-
-    def __getitem__(self, i):
-        return self.a[i]
-
-    def pop(self):
-        return self.a.pop()
-
-    def incAndPop(self):
-        """increment and keep popping zeros. Return False if all True."""
-        while self.a and self.a[-1]:
-            self.a.pop()
-        if self.a:
-            self.a[-1] = True
-            return True
-        else:
-            return False
-
 
 class RepeatedRunDTreeGen:
     def __init__(self):
         self.depth = 0
         self.root = None
         self.activeLeaf = None
-        self.boolStack = BoolStack()
+        self.boolStack = []
         self.finished = False
 
     def __repr__(self):
-        return 'RRDTG(depth={}, root={}, aLeaf={}, boolStack={}, fin={})'.format(self.depth,
+        return 'RRDTG(depth={}, root={}, aLeaf={}, bstk={}, fin={})'.format(self.depth,
             repr(self.root), repr(self.activeLeaf), repr(self.boolStack), self.finished)
 
     def reportFork(self, expr):
@@ -174,11 +135,11 @@ class RepeatedRunDTreeGen:
         if self.depth == len(self.boolStack):
             node = DINode(expr, self.activeLeaf)
             if self.activeLeaf is not None:
-                self.activeLeaf.children[self.boolStack.top()] = node
+                self.activeLeaf.children[self.boolStack[-1]] = node
             else:
                 self.root = node
             self.activeLeaf = node
-            self.boolStack.push(False)
+            self.boolStack.append(False)
         result = self.boolStack[self.depth]
         self.depth += 1
         return result
@@ -188,16 +149,15 @@ class RepeatedRunDTreeGen:
         assert self.depth == len(self.boolStack)
         node = DNode(expr, self.activeLeaf)
         if self.activeLeaf is not None:
-            self.activeLeaf.children[self.boolStack.top()] = node
+            self.activeLeaf.children[self.boolStack[-1]] = node
         else:
             self.root = node
 
-        while len(self.boolStack) and self.boolStack.top():
+        while len(self.boolStack) and self.boolStack[-1]:
             self.boolStack.pop()
             self.activeLeaf = self.activeLeaf.parent
         if len(self.boolStack):
-            self.boolStack.pop()
-            self.boolStack.push(True)
+            self.boolStack[-1] = True
         else:
             self.finished = True
         self.depth = 0
