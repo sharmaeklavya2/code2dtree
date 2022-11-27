@@ -1,0 +1,27 @@
+digraph DTree{
+v0 [label="x0 > x1"];
+v1 [label="x0 > x2"];
+v2 [label="x1 > x2"];
+v3 [label="[x0, x1, x2]"];
+v4 [label="[x0, x2, x1]"];
+v5 [label="x1 > x0"];
+v6 [label="[x2, x1, x0]"];
+v7 [label="[x2, x0, x1]"];
+v8 [label="x1 > x2"];
+v9 [label="x0 > x2"];
+v10 [label="[x1, x0, x2]"];
+v11 [label="[x1, x2, x0]"];
+v12 [label="[x2, x1, x0]"];
+v0 -> v1 [label="0"];
+v1 -> v2 [label="0"];
+v2 -> v3 [label="0"];
+v2 -> v4 [label="1"];
+v1 -> v5 [label="1"];
+v5 -> v6 [label="0"];
+v5 -> v7 [label="1"];
+v0 -> v8 [label="1"];
+v8 -> v9 [label="0"];
+v9 -> v10 [label="0"];
+v9 -> v11 [label="1"];
+v8 -> v12 [label="1"];
+}
