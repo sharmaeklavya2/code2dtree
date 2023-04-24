@@ -1,11 +1,26 @@
 # Code to Decision Tree
 
-Convert a python function to a decision tree.
+`code2dtree` converts a python function to a decision tree.
 
-Run `python selectionSort.py 3` to get a decision tree for
-the [selection sort](https://en.wikipedia.org/wiki/Selection_sort) algorithm
-when the input is a list of length 3.
-Read `selectionSort.py` to see how to use `code2dtree`.
+For example, for this sorting algorithm
+
+```python
+def selectionSorted(a):
+    a = a.copy()
+    n = len(a)
+    for i in range(n):
+        for j in range(i+1, n):
+            if a[i] > a[j]:
+                a[j], a[i] = a[i], a[j]
+    return a
+```
+
+the decision tree is
+
+<img src="https://github.com/sharmaeklavya2/code2dtree/blob/with-examples/examples/ss3.svg?raw=true" />
+
+Read `selectionSort.py` to see how to generate this decision tree using `code2dtree`.
+Running `python selectionSort.py 3` will print a text version of the above decision tree.
 
 `code2dtree` contains type annotations. It passes the `mypy --strict` check.
 
