@@ -138,24 +138,24 @@ class DNode:
 class DINode(DNode):
     def __init__(self, expr: Expr, parent: Optional[DNode]):
         super().__init__(expr, parent)
-        self.children: list[Optional[DNode]] = [None, None]
+        self.kids: list[Optional[DNode]] = [None, None]
 
     def __repr__(self) -> str:
         return '{}({}, 0={}, 1={})'.format(self.__class__.__name__, self.expr,
-            self.children[0], self.children[1])
+            self.kids[0], self.kids[1])
 
     def print(self, fp: TextIO, indent: int = 0) -> None:
         print('  ' * indent + 'if ' + prettyExprRepr(self.expr) + ':', file=fp)
         noneString = '  ' * (indent + 1) + 'unfinished'
-        if self.children[1] is None:
+        if self.kids[1] is None:
             print(noneString, file=fp)
         else:
-            self.children[1].print(fp, indent+1)
+            self.kids[1].print(fp, indent+1)
         print('  ' * indent + 'else:')
-        if self.children[0] is None:
+        if self.kids[0] is None:
             print(noneString, file=fp)
         else:
-            self.children[0].print(fp, indent+1)
+            self.kids[0].print(fp, indent+1)
 
 
 GraphEdge = tuple[int, int, int]
@@ -170,16 +170,16 @@ def toVE(root: Optional[DNode]) -> tuple[list[DNode], list[GraphEdge]]:
         nonlocal id
         V.append(u)
         if isinstance(u, DINode):
-            if u.children[0] is not None:
+            if u.kids[0] is not None:
                 id += 1
                 vi = id
                 E.append((ui, vi, 0))
-                explore(u.children[0], vi)
-            if u.children[1] is not None:
+                explore(u.kids[0], vi)
+            if u.kids[1] is not None:
                 id += 1
                 vi = id
                 E.append((ui, vi, 1))
-                explore(u.children[1], vi)
+                explore(u.kids[1], vi)
 
     if root is not None:
         explore(root, 0)
@@ -230,7 +230,7 @@ class RepeatedRunDTreeGen:
             node = DINode(expr, self.activeLeaf)
             if self.activeLeaf is not None:
                 assert isinstance(self.activeLeaf, DINode)
-                self.activeLeaf.children[self.boolStack[-1]] = node
+                self.activeLeaf.kids[self.boolStack[-1]] = node
             else:
                 self.root = node
             self.activeLeaf = node
@@ -247,7 +247,7 @@ class RepeatedRunDTreeGen:
         node = DNode(expr, self.activeLeaf)
         if self.activeLeaf is not None:
             assert isinstance(self.activeLeaf, DINode)
-            self.activeLeaf.children[self.boolStack[-1]] = node
+            self.activeLeaf.kids[self.boolStack[-1]] = node
         else:
             self.root = node
 
