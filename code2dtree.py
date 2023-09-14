@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 import sys
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, MutableSequence
 from typing import Callable, Optional, TextIO
 
 
 # [ Expr ] ====================================================================
 
 class Expr:
-    globalDTreeGen: Optional[RepeatedRunDTreeGen] = None
+    globalTreeGen: Optional[RepeatedRunTreeGen] = None
 
     def key(self) -> object:
         raise NotImplementedError()
@@ -18,14 +18,15 @@ class Expr:
         return 0
 
     def __bool__(self) -> bool:
-        if Expr.globalDTreeGen is not None:
-            return Expr.globalDTreeGen.reportFork(self)
+        if Expr.globalTreeGen is not None:
+            return Expr.globalTreeGen.decideIf(self)
         else:
             raise NotImplementedError("forking on expressions is disabled.")
 
 
 class BinExpr(Expr):
     def __init__(self, op: str, larg: Expr, rarg: Expr):
+        super().__init__()
         self.op = op
         self.larg = larg
         self.rarg = rarg
@@ -43,6 +44,7 @@ class BinExpr(Expr):
 
 class Var(Expr):
     def __init__(self, name: str):
+        super().__init__()
         self.name = name
 
     def __repr__(self) -> str:
@@ -158,19 +160,34 @@ class NothingNode(LeafNode):
 
 
 class InternalNode(Node):
-    def __init__(self, expr: object, parent: Optional[InternalNode]):
+    def __init__(self, expr: object, parent: Optional[InternalNode], nKids: int):
         super().__init__(expr, parent, False)
-        self.kids: Iterable[Optional[Node]] = []
+        self.kids: MutableSequence[Optional[Node]] = [None] * nKids
+
+    def getKidsExploreStatus(self) -> tuple[int, int]:
+        nEKids, nKids = 0, 0
+        for kid in self.kids:
+            nKids += 1
+            nEKids += kid is not None and kid.explored
+        return (nEKids, nKids)
+
+    def setExploreStatusRec(self) -> None:
+        nEKids, nKids = self.getKidsExploreStatus()
+        if nEKids == nKids:
+            self.explored = True
+            if self.parent is not None:
+                self.parent.setExploreStatusRec()
+
+    def __repr__(self) -> str:
+        parts = ['{}({}'.format(self.__class__.__name__, self.expr)]
+        for i, kid in enumerate(self.kids):
+            parts.append('{}={}'.format(i, kid))
+        return ', '.join(parts) + ')'
 
 
 class IfNode(InternalNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode]):
-        super().__init__(expr, parent)
-        self.kids: list[Optional[Node]] = [None] * 2
-
-    def __repr__(self) -> str:
-        return '{}({}, 0={}, 1={})'.format(self.__class__.__name__, self.expr,
-            self.kids[0], self.kids[1])
+        super().__init__(expr, parent, 2)
 
     def print(self, fp: TextIO, indent: int = 0) -> None:
         noneString = '  ' * (indent + 1) + '(unfinished)'
@@ -186,6 +203,21 @@ class IfNode(InternalNode):
             self.kids[0].print(fp, indent+1)
 
 
+class FrozenIfNode(InternalNode):
+    def __init__(self, expr: Expr, parent: Optional[InternalNode], b: bool):
+        super().__init__(expr, parent, 1)
+        self.b = b
+
+    def print(self, fp: TextIO, indent: int = 0) -> None:
+        noneString = '  ' * (indent + 1) + '(unfinished)'
+        print('  ' * indent + 'assert ' + ('' if self.b else 'not(') +
+            prettyExprRepr(self.expr) + ('' if self.b else ')'))
+        if self.kids[0] is None:
+            print(noneString, file=fp)
+        else:
+            self.kids[0].print(fp, indent)
+
+
 GraphEdge = tuple[int, int, int]
 
 
@@ -197,13 +229,20 @@ def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
     def explore(u: Node, ui: int) -> None:
         nonlocal id
         V.append(u)
-        if isinstance(u, InternalNode):
+        if isinstance(u, IfNode):
             for j, v in enumerate(u.kids):
                 if v is not None:
                     id += 1
                     vi = id
                     E.append((ui, vi, j))
                     explore(v, vi)
+        elif isinstance(u, FrozenIfNode):
+            j, v = 0, u.kids[0]
+            if v is not None:
+                id += 1
+                vi = id
+                E.append((ui, vi, int(u.b)))
+                explore(v, vi)
 
     if root is not None:
         explore(root, 0)
@@ -221,88 +260,137 @@ def printGraphViz(V: list[Node], E: list[GraphEdge], fp: TextIO) -> None:
     print('}', file=fp)
 
 
-# [ RepeatedRunDTreeGen ] =====================================================
+# [ RepeatedRunTreeGen ] =====================================================
+
+class TreeExplorer:
+    def decideIf(self, expr: Expr) -> tuple[bool, bool]:
+        # return pair (b1, b2), where b1 = bool(expr) and b2 decides whether
+        # not(expr) should be explored in the future.
+        return (False, True)
+
+    def noteIf(self, expr: Expr, b: bool) -> None:
+        pass
+
+    def noteReturn(self, expr: object) -> None:
+        pass
 
 
-class RepeatedRunDTreeGen:
-    def __init__(self, useCache: bool = True):
-        self.depth = 0
+class CachedTreeExplorer(TreeExplorer):
+    def __init__(self) -> None:
+        super().__init__()
+        self.cache: dict[object, bool] = {}
+
+    def noteIf(self, expr: Expr, b: bool) -> None:
+        key = expr.key()
+        self.cache[key] = b
+
+    def decideIf(self, expr: Expr) -> tuple[bool, bool]:
+        key = expr.key()
+        try:
+            b = self.cache[key]
+            return (b, False)
+        except KeyError:
+            self.cache[key] = False
+            return (False, True)
+
+    def noteReturn(self, expr: object) -> None:
+        self.cache.clear()
+
+
+class RepeatedRunTreeGen:
+    def __init__(self, explorer: TreeExplorer):
+        self.explorer = explorer
         self.root: Optional[Node] = None
-        self.activeLeaf: Optional[InternalNode] = None
-        self.boolStack: list[bool] = []
-        self.finished = False
-        self.useCache = useCache
-        self.cachedValues: dict[object, bool] = {}
-        """
-        Let c be the nodes consisting of self.activeLeaf and its ancestors, ordered root-first.
-        Then len(c) == len(self.boolStack), and self.boolStack[i] is the value of c[i].expr.
-        """
+        self.parent: Optional[InternalNode] = None
+        self.current: Optional[Node] = None
+        self.kidIndex: Optional[int] = None
+
+    def finished(self) -> bool:
+        return self.root is not None and self.root.explored
 
     def __repr__(self) -> str:
-        return 'RRDTG(depth={}, root={}, aLeaf={}, bstk={}, fin={})'.format(self.depth,
-            repr(self.root), repr(self.activeLeaf), repr(self.boolStack), self.finished)
+        return 'RRDTG(root={})'.format(repr(self.root))
 
-    def reportFork(self, expr: Expr) -> bool:
-        assert not(self.finished)
-        assert self.depth <= len(self.boolStack)
-        if self.useCache:
-            try:
-                return self.cachedValues[expr.key()]
-            except KeyError:
-                pass
-        if self.depth == len(self.boolStack):
-            node = IfNode(expr, self.activeLeaf)
-            if self.activeLeaf is not None:
-                assert isinstance(self.activeLeaf, IfNode)
-                self.activeLeaf.kids[self.boolStack[-1]] = node
+    def goDown(self, i: int) -> None:
+        assert self.current is not None and isinstance(self.current, InternalNode)
+        self.parent = self.current
+        self.current = self.current.kids[i]
+        self.kidIndex = i
+
+    def decideIf(self, expr: Expr) -> bool:
+        if self.current is not None:
+            assert isinstance(self.current, IfNode) or isinstance(self.current, FrozenIfNode)
+            kidStatuses = [kid is not None and kid.explored for kid in self.current.kids]
+            assert sum(kidStatuses) < len(kidStatuses)
+            if isinstance(self.current, IfNode):
+                for b in (False, True):
+                    if kidStatuses[not b]:
+                        self.explorer.noteIf(expr, b)
+                        self.goDown(b)
+                        return b
+            else:
+                b = self.current.b
+                self.explorer.noteIf(expr, b)
+                self.goDown(0)
+                return b
+
+        # now all kids are unexplored and self.current is not a FrozenIfNode
+        b, checkOther = self.explorer.decideIf(expr)
+        if self.current is not None:
+            assert isinstance(self.current, IfNode)
+            if not checkOther:
+                raise ValueError('TreeExplorer.decideIf outputs inconsistent checkOther for expr '
+                    + str(expr))
+            else:
+                self.goDown(b)
+                return b
+        else:
+            if checkOther:
+                node: InternalNode = IfNode(expr, self.parent)
+            else:
+                node = FrozenIfNode(expr, self.parent, b)
+            if self.parent is not None:
+                assert self.kidIndex is not None
+                self.parent.kids[self.kidIndex] = node
             else:
                 self.root = node
-            self.activeLeaf = node
-            self.boolStack.append(False)
-        result = self.boolStack[self.depth]
-        if self.useCache:
-            self.cachedValues[expr.key()] = result
-        self.depth += 1
-        return result
+            self.parent = node
+            self.current = None
+            self.kidIndex = b if checkOther else 0
+            return b
 
     def reportEnd(self, expr: object) -> None:
-        assert not(self.finished)
-        assert self.depth == len(self.boolStack)
-        node = ReturnNode(expr, self.activeLeaf)
-        if self.activeLeaf is not None:
-            assert isinstance(self.activeLeaf, IfNode)
-            self.activeLeaf.kids[self.boolStack[-1]] = node
+        assert self.current is None
+        node = ReturnNode(expr, self.parent)
+        if self.parent is not None:
+            assert self.kidIndex is not None
+            self.parent.kids[self.kidIndex] = node
         else:
             self.root = node
 
-        while len(self.boolStack) and self.boolStack[-1]:
-            assert self.activeLeaf is not None  # since boolStack is not empty
-            self.boolStack.pop()
-            self.activeLeaf = self.activeLeaf.parent
-        if len(self.boolStack):
-            self.boolStack[-1] = True
-        else:
-            self.finished = True
-        if self.useCache:
-            self.cachedValues.clear()
-        self.depth = 0
+        if self.parent is not None:
+            self.parent.setExploreStatusRec()
+        self.parent = None
+        self.current = self.root
+        self.kidIndex = None
+        self.explorer.noteReturn(expr)
 
     def runOnce(self, func: Callable[..., object], *args: object, **kwargs: object) -> None:
-        Expr.globalDTreeGen = self
+        Expr.globalTreeGen = self
         result = func(*args, **kwargs)
         self.reportEnd(result)
-        Expr.globalDTreeGen = None
+        Expr.globalTreeGen = None
 
     def run(self, func: Callable[..., object], *args: object, **kwargs: object) -> None:
-        Expr.globalDTreeGen = self
-        while not(self.finished):
+        Expr.globalTreeGen = self
+        while not(self.finished()):
             result = func(*args, **kwargs)
             self.reportEnd(result)
-        Expr.globalDTreeGen = None
+        Expr.globalTreeGen = None
 
 
 def func2dtree(func: Callable[..., object], *args: object, **kwargs: object) -> Node:
-    gen = RepeatedRunDTreeGen()
+    gen = RepeatedRunTreeGen(CachedTreeExplorer())
     gen.run(func, *args, **kwargs)
     assert gen.root is not None
     return gen.root
