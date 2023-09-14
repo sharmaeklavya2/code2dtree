@@ -121,32 +121,60 @@ def prettyExprRepr(x: object) -> str:
         return repr(x)
 
 
-# [ DNode ] ===================================================================
+# [ Node ] ===================================================================
 
-class DNode:
-    def __init__(self, expr: object, parent: Optional[DNode]):
+class Node:
+    def __init__(self, expr: object, parent: Optional[InternalNode], explored: bool):
         self.expr = expr
         self.parent = parent
+        self.explored = explored
 
     def __repr__(self) -> str:
-        return '{}({})'.format(self.__class__.__name__, self.expr)
+        return '{}({}, exp={})'.format(self.__class__.__name__, self.expr, self.explored)
+
+    def print(self, fp: TextIO, indent: int = 0) -> None:
+        raise NotImplementedError()
+
+
+class LeafNode(Node):
+    def __init__(self, expr: object, parent: Optional[InternalNode]):
+        super().__init__(expr, parent, True)
+
+
+class ReturnNode(LeafNode):
+    def __init__(self, expr: object, parent: Optional[InternalNode]):
+        super().__init__(expr, parent)
 
     def print(self, fp: TextIO, indent: int = 0) -> None:
         print('  ' * indent + 'return ' + prettyExprRepr(self.expr), file=fp)
 
 
-class DINode(DNode):
-    def __init__(self, expr: Expr, parent: Optional[DNode]):
+class NothingNode(LeafNode):
+    def __init__(self, parent: Optional[InternalNode]):
+        super().__init__(None, parent)
+
+    def print(self, fp: TextIO, indent: int = 0) -> None:
+        print('  ' * indent + '(nothing)')
+
+
+class InternalNode(Node):
+    def __init__(self, expr: object, parent: Optional[InternalNode]):
+        super().__init__(expr, parent, False)
+        self.kids: Iterable[Optional[Node]] = []
+
+
+class IfNode(InternalNode):
+    def __init__(self, expr: Expr, parent: Optional[InternalNode]):
         super().__init__(expr, parent)
-        self.kids: list[Optional[DNode]] = [None, None]
+        self.kids: list[Optional[Node]] = [None] * 2
 
     def __repr__(self) -> str:
         return '{}({}, 0={}, 1={})'.format(self.__class__.__name__, self.expr,
             self.kids[0], self.kids[1])
 
     def print(self, fp: TextIO, indent: int = 0) -> None:
+        noneString = '  ' * (indent + 1) + '(unfinished)'
         print('  ' * indent + 'if ' + prettyExprRepr(self.expr) + ':', file=fp)
-        noneString = '  ' * (indent + 1) + 'unfinished'
         if self.kids[1] is None:
             print(noneString, file=fp)
         else:
@@ -161,25 +189,21 @@ class DINode(DNode):
 GraphEdge = tuple[int, int, int]
 
 
-def toVE(root: Optional[DNode]) -> tuple[list[DNode], list[GraphEdge]]:
+def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
     V = []
     E = []
     id = 0
 
-    def explore(u: DNode, ui: int) -> None:
+    def explore(u: Node, ui: int) -> None:
         nonlocal id
         V.append(u)
-        if isinstance(u, DINode):
-            if u.kids[0] is not None:
-                id += 1
-                vi = id
-                E.append((ui, vi, 0))
-                explore(u.kids[0], vi)
-            if u.kids[1] is not None:
-                id += 1
-                vi = id
-                E.append((ui, vi, 1))
-                explore(u.kids[1], vi)
+        if isinstance(u, InternalNode):
+            for j, v in enumerate(u.kids):
+                if v is not None:
+                    id += 1
+                    vi = id
+                    E.append((ui, vi, j))
+                    explore(v, vi)
 
     if root is not None:
         explore(root, 0)
@@ -188,7 +212,7 @@ def toVE(root: Optional[DNode]) -> tuple[list[DNode], list[GraphEdge]]:
     return (V, E)
 
 
-def printGraphViz(V: list[DNode], E: list[GraphEdge], fp: TextIO) -> None:
+def printGraphViz(V: list[Node], E: list[GraphEdge], fp: TextIO) -> None:
     print('digraph DTree{', file=fp)
     for i, w in enumerate(V):
         print('v{} [label="{}"];'.format(i, prettyExprRepr(w.expr)), file=fp)
@@ -203,15 +227,15 @@ def printGraphViz(V: list[DNode], E: list[GraphEdge], fp: TextIO) -> None:
 class RepeatedRunDTreeGen:
     def __init__(self, useCache: bool = True):
         self.depth = 0
-        self.root: Optional[DNode] = None
-        self.activeLeaf: Optional[DNode] = None
+        self.root: Optional[Node] = None
+        self.activeLeaf: Optional[InternalNode] = None
         self.boolStack: list[bool] = []
         self.finished = False
         self.useCache = useCache
         self.cachedValues: dict[object, bool] = {}
         """
         Let c be the nodes consisting of self.activeLeaf and its ancestors, ordered root-first.
-        Then len(c) == len(self.boolStack), and self.boolStack[i] is the value of c.expr.
+        Then len(c) == len(self.boolStack), and self.boolStack[i] is the value of c[i].expr.
         """
 
     def __repr__(self) -> str:
@@ -227,9 +251,9 @@ class RepeatedRunDTreeGen:
             except KeyError:
                 pass
         if self.depth == len(self.boolStack):
-            node = DINode(expr, self.activeLeaf)
+            node = IfNode(expr, self.activeLeaf)
             if self.activeLeaf is not None:
-                assert isinstance(self.activeLeaf, DINode)
+                assert isinstance(self.activeLeaf, IfNode)
                 self.activeLeaf.kids[self.boolStack[-1]] = node
             else:
                 self.root = node
@@ -244,9 +268,9 @@ class RepeatedRunDTreeGen:
     def reportEnd(self, expr: object) -> None:
         assert not(self.finished)
         assert self.depth == len(self.boolStack)
-        node = DNode(expr, self.activeLeaf)
+        node = ReturnNode(expr, self.activeLeaf)
         if self.activeLeaf is not None:
-            assert isinstance(self.activeLeaf, DINode)
+            assert isinstance(self.activeLeaf, IfNode)
             self.activeLeaf.kids[self.boolStack[-1]] = node
         else:
             self.root = node
@@ -277,7 +301,7 @@ class RepeatedRunDTreeGen:
         Expr.globalDTreeGen = None
 
 
-def func2dtree(func: Callable[..., object], *args: object, **kwargs: object) -> DNode:
+def func2dtree(func: Callable[..., object], *args: object, **kwargs: object) -> Node:
     gen = RepeatedRunDTreeGen()
     gen.run(func, *args, **kwargs)
     assert gen.root is not None
