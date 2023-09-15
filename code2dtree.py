@@ -43,7 +43,7 @@ class BinExpr(Expr):
 
 
 class Var(Expr):
-    def __init__(self, name: str):
+    def __init__(self, name: object):
         super().__init__()
         self.name = name
 
@@ -51,7 +51,7 @@ class Var(Expr):
         return '{}({})'.format(self.__class__.__name__, repr(self.name))
 
     def __str__(self) -> str:
-        return self.name
+        return str(self.name)
 
     def key(self) -> object:
         return (self.__class__.__name__, self.name)
