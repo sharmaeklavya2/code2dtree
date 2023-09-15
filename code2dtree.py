@@ -63,9 +63,22 @@ class AggExpr(Expr):
 
 
 class Var(Expr):
+    registry: dict[object, Var] = {}
+
+    @staticmethod
+    def get(name: object) -> Var:
+        try:
+            return Var.registry[name]
+        except KeyError:
+            return Var(name)
+
     def __init__(self, name: object):
         super().__init__()
-        self.name = name
+        if name in Var.registry:
+            raise Exception('{}({}) already exists'.format(self.__class__.__name__, repr(name)))
+        else:
+            self.name = name
+            Var.registry[name] = self
 
     def __repr__(self) -> str:
         return '{}({})'.format(self.__class__.__name__, repr(self.name))
