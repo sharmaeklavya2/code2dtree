@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 import sys
-from collections.abc import Iterable, Mapping, MutableSequence
-from typing import Callable, Optional, TextIO
+from collections.abc import Iterable, Mapping, MutableSequence, Sequence
+from typing import Callable, Optional, TextIO, Union
 
 
 # [ Expr ] ====================================================================
@@ -42,6 +42,24 @@ class BinExpr(Expr):
         lkey = self.larg.key() if isinstance(self.larg, Expr) else self.larg
         rkey = self.rarg.key() if isinstance(self.rarg, Expr) else self.rarg
         return (self.__class__.__name__, self.op, lkey, rkey)
+
+
+class AggExpr(Expr):
+    def __init__(self, op: str, args: Sequence[object]):
+        super().__init__()
+        self.op = op
+        self.args = args
+
+    def __repr__(self) -> str:
+        return '{}({}, {})'.format(self.__class__.__name__, repr(self.op), repr(self.args))
+
+    def __str__(self) -> str:
+        sep = ' ' + self.op + ' '
+        return '(' + sep.join([str(x) for x in self.args]) + ')'
+
+    def key(self) -> object:
+        argKeys = tuple([x.key() if isinstance(x, Expr) else x for x in self.args])
+        return (self.__class__.__name__, self.op, argKeys)
 
 
 class Var(Expr):
@@ -125,7 +143,52 @@ def prettyExprRepr(x: object) -> str:
         return repr(x)
 
 
-# [ Node ] ===================================================================
+# [ Utilities ]=================================================================
+
+def flattenExprHelper(expr: object, op: str, output: list[object]) -> None:
+    if isinstance(expr, BinExpr):
+        if expr.op == op:
+            flattenExprHelper(expr.larg, op, output)
+            flattenExprHelper(expr.rarg, op, output)
+        else:
+            output.append(expr)
+    elif isinstance(expr, AggExpr):
+        if expr.op == op:
+            for arg in expr.args:
+                flattenExprHelper(arg, op, output)
+        else:
+            output.append(expr)
+    else:
+        output.append(expr)
+
+
+def flattenExpr(expr: object, op: str) -> AggExpr:
+    terms: list[object] = []
+    flattenExprHelper(expr, op, terms)
+    return AggExpr(op, terms)
+
+
+def all(it: Iterable[object]) -> Union[bool, AggExpr]:
+    terms: list[Expr] = []
+    for x in it:
+        if isinstance(x, Expr):
+            terms.append(x)
+        elif not x:
+            return False
+    return AggExpr('and', terms)
+
+
+def any(it: Iterable[object]) -> Union[bool, AggExpr]:
+    terms: list[Expr] = []
+    for x in it:
+        if isinstance(x, Expr):
+            terms.append(x)
+        elif x:
+            return True
+    return AggExpr('or', terms)
+
+
+# [ Node ] =====================================================================
 
 class Node:
     def __init__(self, expr: object, parent: Optional[InternalNode], explored: bool):
