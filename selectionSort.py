@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from code2dtree import Var, func2dtree, toVE, printGraphViz
+from code2dtree import Var, func2dtree, printGraphViz
 from typing import Any
 
 
@@ -26,9 +26,8 @@ def main() -> None:
     print('input:', a)
     dtree = func2dtree(selectionSorted, a)
     if args.output is not None:
-        V, E = toVE(dtree)
         with open(args.output, 'w') as fp:
-            printGraphViz(V, E, fp)
+            printGraphViz(dtree, fp)
     else:
         dtree.print(sys.stdout)
 
