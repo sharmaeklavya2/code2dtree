@@ -25,7 +25,7 @@ class Expr:
 
 
 class BinExpr(Expr):
-    def __init__(self, op: str, larg: Expr, rarg: Expr):
+    def __init__(self, op: str, larg: object, rarg: object):
         super().__init__()
         self.op = op
         self.larg = larg
@@ -39,7 +39,9 @@ class BinExpr(Expr):
         return '({} {} {})'.format(str(self.larg), str(self.op), str(self.rarg))
 
     def key(self) -> object:
-        return (self.__class__.__name__, self.op, self.larg.key(), self.rarg.key())
+        lkey = self.larg.key() if isinstance(self.larg, Expr) else self.larg
+        rkey = self.rarg.key() if isinstance(self.rarg, Expr) else self.rarg
+        return (self.__class__.__name__, self.op, lkey, rkey)
 
 
 class Var(Expr):
