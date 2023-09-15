@@ -455,7 +455,12 @@ class RepeatedRunTreeGen:
 
 
 def func2dtree(func: Callable[..., object], *args: object, **kwargs: object) -> Node:
-    gen = RepeatedRunTreeGen(CachedTreeExplorer())
+    return func2dtreeHelper(func, CachedTreeExplorer(), args, kwargs)
+
+
+def func2dtreeHelper(func: Callable[..., object], treeExplorer: TreeExplorer,
+        args: Sequence[object], kwargs: Mapping[str, object]) -> Node:
+    gen = RepeatedRunTreeGen(treeExplorer)
     gen.run(func, *args, **kwargs)
     assert gen.root is not None
     return gen.root
