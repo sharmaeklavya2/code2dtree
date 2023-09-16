@@ -1,28 +1,22 @@
-from collections.abc import Mapping, Sequence
-from typing import Any
+from collections.abc import Collection, Mapping, Sequence, Set
+from typing import Any, Optional
 from .expr import Var, Expr, BinExpr
 from .aggExpr import AggExpr
 
 
 class LinCmpExpr(Expr):
-    def __init__(self, varNames: Sequence[object], coeffs: Sequence[Any], rhs: Any, op: str):
-        if len(varNames) != len(coeffs):
-            raise ValueError('len(varNames)={}, but len(coeffs)={}'.format(
-                len(varNames), len(coeffs)))
-        self.varNames = varNames
-        self.coeffs = coeffs
+    def __init__(self, coeffDict: Mapping[object, Any], rhs: Any, op: str):
+        self.coeffDict = coeffDict
         self.rhs = rhs
         self.op = op
 
     def __repr__(self) -> str:
-        return '{cls}(varNames={varNames}, coeffs={coeffs}, op={op}, rhs={rhs})'.format(
-            cls=self.__class__.__name__, varNames=repr(self.varNames), coeffs=repr(self.coeffs),
-            op=repr(self.op), rhs=repr(self.rhs))
+        return '{}({}, op={}, rhs={})'.format(
+            self.__class__.__name__, self.coeffDict, repr(self.op), repr(self.rhs))
 
     def __str__(self) -> str:
-        # return '({} {} {})'.format(str(self.larg), str(self.op), str(self.rarg))
         terms = []
-        for i, (varName, coeff) in enumerate(zip(self.varNames, self.coeffs)):
+        for i, (varName, coeff) in enumerate(self.coeffDict.items()):
             if coeff != 0:
                 signStr = '- ' if coeff < 0 else ('+ ' if i > 0 else '')
                 coeff = -coeff if coeff < 0 else coeff
@@ -31,8 +25,7 @@ class LinCmpExpr(Expr):
         return ' '.join(terms) + ' {} {}'.format(self.op, str(self.rhs))
 
     def key(self) -> object:
-        return (self.__class__.__name__, self.op, self.rhs, tuple(self.coeffs),
-            tuple(self.varNames))
+        return (self.__class__.__name__, self.op, self.rhs, frozenset(self.coeffDict.items()))
 
 
 def flipOpToG(op: str) -> tuple[str, int]:
@@ -88,14 +81,16 @@ def parseAffineHelper(expr: object, coeffMul: Any, coeffDict: dict[object, Any])
         return expr * coeffMul
 
 
-def parseLinCmpExprHelper(expr: Expr) -> tuple[Mapping[object, Any], str, Any]:
-    if isinstance(expr, BinExpr):
+def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
+    if isinstance(expr, LinCmpExpr):
+        return expr
+    elif isinstance(expr, BinExpr):
         coeffDict: dict[object, Any] = {}
         op, baseCoeffMul = flipOpToG(expr.op)
         constTerm = 0
         for (coeffMul, subExpr) in ((baseCoeffMul, expr.larg), (-baseCoeffMul, expr.rarg)):
             constTerm += parseAffineHelper(subExpr, coeffMul, coeffDict)
-        return (coeffDict, op, -constTerm)
+        return LinCmpExpr(coeffDict, -constTerm, op)
     else:
         raise ValueError('expected BinExpr with comparison operator')
 
