@@ -78,7 +78,10 @@ def parseAffineHelper(expr: object, coeffMul: Any, coeffDict: dict[object, Any])
         else:
             raise ValueError('parseAffineHelper: unsupported operator ' + expr.op)
     elif isinstance(expr, AggExpr):
-        raise NotImplementedError('parseAffineHelper: AggExpr is currently unsupported')
+        if expr.op == '+':
+            return sum([parseAffineHelper(arg, coeffMul, coeffDict) for arg in expr.args])
+        else:
+            raise ValueError('parseAffineHelper: unsupported AggExpr operator ' + expr.op)
     elif isinstance(expr, Expr):
         raise ValueError('parseAffineHelper: unknown Expr type ' + type(expr).__name__)
     else:
