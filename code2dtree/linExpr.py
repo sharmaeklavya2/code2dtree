@@ -2,6 +2,11 @@ from collections.abc import Collection, Mapping, Sequence, Set
 from typing import Any, Optional
 from .expr import Var, Expr, BinExpr
 from .aggExpr import AggExpr
+from .rrtg import TreeExplorer
+
+
+OSeq = Sequence[object]
+OSeqColl = Collection[OSeq]
 
 
 class LinCmpExpr(Expr):
@@ -95,10 +100,64 @@ def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
         raise ValueError('expected BinExpr with comparison operator')
 
 
-def parseLinCmpExpr(expr: Expr, varNames: Sequence[object]) -> LinCmpExpr:
-    varNameToIndex = {varName: i for i, varName in enumerate(varNames)}
-    coeffDict, op, constTerm = parseLinCmpExprHelper(expr)
-    coeffs = [0] * len(varNames)
-    for varName, coeff in coeffDict.items():
-        coeffs[varNameToIndex[varName]] = coeff
-    return LinCmpExpr(varNames, coeffs, constTerm, op)
+def domination(expr: LinCmpExpr, orderings: OSeqColl) -> Optional[bool]:
+    # return True or False if we can infer expr's truth based on orderings, return None otherwise.
+    if expr.op == '==':
+        return None
+
+    orderedVars: Set[object] = set()
+    for ordering in orderings:
+        orderedVars |= set(ordering)
+    unorderedVars = expr.coeffDict.keys() - orderedVars
+
+    allPos = all([expr.coeffDict[varName] >= 0 for varName in unorderedVars])
+    allNeg = all([expr.coeffDict[varName] <= 0 for varName in unorderedVars])
+    for ordering in orderings:
+        coeffSum = 0
+        for varName in ordering:
+            if not (allPos or allNeg):
+                return None
+            coeffSum += expr.coeffDict.get(varName, 0)
+            if coeffSum < 0:
+                allPos = False
+            if coeffSum > 0:
+                allNeg = False
+
+    rhs = expr.rhs
+    if expr.op in ('<', '≤'):
+        allPos, allNeg, rhs = allNeg, allPos, -rhs
+
+    if allPos and rhs <= 0:
+        return True
+    if allNeg and rhs >= 0:
+        return False
+    return None
+
+
+class LinConstrTreeExplorer(TreeExplorer):
+    def __init__(self, orderings: OSeqColl = ()) -> None:
+        super().__init__()
+        self.orderings = orderings
+        self.cache: dict[object, bool] = {}
+
+    def noteIf(self, expr: Expr, b: bool) -> None:
+        lce = parseLinCmpExpr(expr)
+        self.cache[lce.key()] = b
+
+    def decideIf(self, expr: Expr) -> tuple[bool, bool]:
+        linCmpExpr = parseLinCmpExpr(expr)
+        key = linCmpExpr.key()
+        try:
+            b = self.cache[key]
+            return (b, False)
+        except KeyError:
+            domB = domination(linCmpExpr, self.orderings)
+            if domB is not None:
+                self.cache[key] = domB
+                return (domB, False)
+            else:
+                self.cache[key] = False
+                return (False, True)
+
+    def noteReturn(self, expr: object) -> None:
+        self.cache.clear()
