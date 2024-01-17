@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Collection, Mapping, Sequence, Set
 from typing import Any, Optional
 from .expr import Var, Expr, BinExpr
@@ -10,7 +11,7 @@ OSeqColl = Collection[OSeq]
 
 
 class LinCmpExpr(Expr):
-    def __init__(self, coeffDict: Mapping[object, Any], rhs: Any, op: str):
+    def __init__(self, coeffDict: Mapping[object, Any], op: str, rhs: Any):
         self.coeffDict = coeffDict
         self.rhs = rhs
         self.op = op
@@ -31,6 +32,19 @@ class LinCmpExpr(Expr):
 
     def key(self) -> object:
         return (self.__class__.__name__, self.op, self.rhs, frozenset(self.coeffDict.items()))
+
+    def negate(self) -> LinCmpExpr:
+        return LinCmpExpr(self.coeffDict, NEG_OP[self.op], self.rhs)
+
+
+NEG_OP = {
+    '<': '≥',
+    '>': '≤',
+    '≥': '<',
+    '≤': '>',
+    '==': '≠',
+    '≠': '==',
+}
 
 
 def flipOpToG(op: str) -> tuple[str, int]:
@@ -86,7 +100,7 @@ def parseAffineHelper(expr: object, coeffMul: Any, coeffDict: dict[object, Any])
         return expr * coeffMul
 
 
-def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
+def parseLinCmpExpr(expr: object) -> LinCmpExpr:
     if isinstance(expr, LinCmpExpr):
         return expr
     elif isinstance(expr, BinExpr):
@@ -95,7 +109,7 @@ def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
         constTerm = 0
         for (coeffMul, subExpr) in ((baseCoeffMul, expr.larg), (-baseCoeffMul, expr.rarg)):
             constTerm += parseAffineHelper(subExpr, coeffMul, coeffDict)
-        return LinCmpExpr(coeffDict, -constTerm, op)
+        return LinCmpExpr(coeffDict, op, -constTerm)
     else:
         raise ValueError('expected BinExpr with comparison operator')
 
