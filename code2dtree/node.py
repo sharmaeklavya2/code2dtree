@@ -1,6 +1,6 @@
 from __future__ import annotations
 import sys
-from collections.abc import MutableSequence
+from collections.abc import Iterable, MutableSequence
 from typing import Optional, TextIO
 
 from .expr import Expr, prettyExprRepr
@@ -97,6 +97,18 @@ class FrozenIfNode(InternalNode):
             print(noneString, file=fp)
         else:
             self.kids[0].print(fp, indent)
+
+
+def getLeaves(root: Optional[Node]) -> Iterable[LeafNode]:
+    if root is None:
+        print('getLeaves: found None node', file=sys.stderr)
+    elif isinstance(root, LeafNode):
+        yield root
+    elif isinstance(root, InternalNode):
+        for kid in root.kids:
+            yield from getLeaves(kid)
+    else:
+        raise TypeError('getLeaves: root has type {}'.format(type(root).__name__))
 
 
 GraphEdge = tuple[int, int, int]

@@ -9,7 +9,7 @@ from .rrtg import *
 __all__ = [
     'Expr', 'Var', 'BinExpr',
     'Node', 'LeafNode', 'ReturnNode', 'NothingNode', 'InternalNode',
-    'IfNode', 'FrozenIfNode', 'printGraphViz',
+    'IfNode', 'FrozenIfNode', 'printGraphViz', 'getLeaves',
     'TreeExplorer', 'CachedTreeExplorer', 'RepeatedRunTreeGen', 'func2dtree', 'func2dtreeHelper',
     ]
 # from .linCmpExpr import *  # noqa
