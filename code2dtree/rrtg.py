@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable
 from typing import Optional
 
 from .expr import Expr
@@ -39,6 +39,12 @@ class CachedTreeExplorer(TreeExplorer):
 
     def noteReturn(self, expr: object) -> None:
         self.cache.clear()
+
+
+class FuncArgs:
+    def __init__(self, *args: object, **kwargs: object):
+        self.args = args
+        self.kwargs = kwargs
 
 
 class RepeatedRunTreeGen:
@@ -119,27 +125,24 @@ class RepeatedRunTreeGen:
         self.kidIndex = None
         self.explorer.noteReturn(expr)
 
-    def runOnce(self, func: Callable[..., object], *args: object, **kwargs: object) -> None:
+    def runOnce(self, func: Callable[..., object], funcArgs: FuncArgs) -> None:
         Expr.globalTreeGen = self
-        result = func(*args, **kwargs)
+        result = func(*(funcArgs.args), **(funcArgs.kwargs))
         self.reportEnd(result)
         Expr.globalTreeGen = None
 
-    def run(self, func: Callable[..., object], *args: object, **kwargs: object) -> None:
+    def run(self, func: Callable[..., object], funcArgs: FuncArgs) -> None:
         Expr.globalTreeGen = self
-        while not(self.finished()):
-            result = func(*args, **kwargs)
+        while not self.finished():
+            result = func(*(funcArgs.args), **(funcArgs.kwargs))
             self.reportEnd(result)
         Expr.globalTreeGen = None
 
 
-def func2dtree(func: Callable[..., object], *args: object, **kwargs: object) -> Node:
-    return func2dtreeHelper(func, CachedTreeExplorer(), args, kwargs)
-
-
-def func2dtreeHelper(func: Callable[..., object], treeExplorer: TreeExplorer,
-        args: Sequence[object], kwargs: Mapping[str, object]) -> Node:
+def func2dtree(func: Callable[..., object], funcArgs: FuncArgs, treeExplorer: Optional[TreeExplorer] = None) -> Node:
+    if treeExplorer is None:
+        treeExplorer = CachedTreeExplorer()
     gen = RepeatedRunTreeGen(treeExplorer)
-    gen.run(func, *args, **kwargs)
+    gen.run(func, funcArgs)
     assert gen.root is not None
     return gen.root

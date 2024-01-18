@@ -24,7 +24,7 @@ def main() -> None:
 
     a = [Var('x'+str(i)) for i in range(args.n)]
     print('input:', a)
-    dtree = func2dtree(selectionSorted, a)
+    dtree = func2dtree(selectionSorted, FuncArgs(a))
     if args.output is not None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
