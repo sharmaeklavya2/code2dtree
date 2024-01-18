@@ -47,15 +47,13 @@ NEG_OP = {
 }
 
 
-def flipOpToG(op: str) -> tuple[str, int]:
-    if op in ('>', '≥', '=='):
-        return (op, 1)
-    elif op == '<':
-        return ('>', -1)
-    elif op == '≤':
-        return ('≥', -1)
-    else:
-        raise ValueError('invalid operator ' + op)
+FLIP_OP_TO_G = {
+    '>': ('>', 1),
+    '≥': ('≥', 1),
+    '==': ('==', 1),
+    '<': ('>', -1),
+    '≤': ('≥', -1),
+}
 
 
 def addToDict(d: dict[object, Any], k: object, v: Any) -> None:
@@ -105,7 +103,7 @@ def parseLinCmpExpr(expr: object) -> LinCmpExpr:
         return expr
     elif isinstance(expr, BinExpr):
         coeffDict: dict[object, Any] = {}
-        op, baseCoeffMul = flipOpToG(expr.op)
+        op, baseCoeffMul = FLIP_OP_TO_G[expr.op]
         constTerm = 0
         for (coeffMul, subExpr) in ((baseCoeffMul, expr.larg), (-baseCoeffMul, expr.rarg)):
             constTerm += parseAffineHelper(subExpr, coeffMul, coeffDict)
