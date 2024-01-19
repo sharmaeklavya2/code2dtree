@@ -10,10 +10,10 @@ from collections.abc import Sequence
 from typing import Any
 
 
-CompT = Any
+CompT = Any  # Comparable
 
 
-def argmin(x: Sequence[CompT]) -> CompT:
+def argmin(x: Sequence[CompT]) -> int:
     """Smallest index of minimum value in non-empty list."""
     n = len(x)
     minIndex, minValue = 0, x[0]
