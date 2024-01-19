@@ -1,6 +1,6 @@
 from __future__ import annotations
-from collections.abc import Callable
-from typing import Optional, TextIO
+from collections.abc import Callable, Sequence
+from typing import Optional, TextIO, Union
 
 from .expr import Expr
 from .node import Node, InternalNode, IfNode, FrozenIfNode, CheckpointNode, ReturnNode
@@ -153,11 +153,16 @@ class RepeatedRunTreeGen:
         Expr.globalTreeGen = None
 
 
-def func2dtree(func: Callable[..., object], funcArgs: FuncArgs, treeExplorer: Optional[TreeExplorer] = None) -> Node:
+def func2dtree(func: Callable[..., object], funcArgs: Union[FuncArgs, Sequence[object]],
+        treeExplorer: Optional[TreeExplorer] = None) -> Node:
     if treeExplorer is None:
         treeExplorer = CachedTreeExplorer()
+    if isinstance(funcArgs, FuncArgs):
+        fa = funcArgs
+    else:
+        fa = FuncArgs(*funcArgs)
     gen = RepeatedRunTreeGen(treeExplorer)
-    gen.run(func, funcArgs)
+    gen.run(func, fa)
     assert gen.root is not None
     return gen.root
 

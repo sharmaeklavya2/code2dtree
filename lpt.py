@@ -4,7 +4,7 @@
 
 import sys
 import argparse
-from code2dtree import Var, func2dtree, printGraphViz, FuncArgs, checkpoint
+from code2dtree import Var, func2dtree, printGraphViz, checkpoint
 from code2dtree.linExpr import LinConstrTreeExplorer
 from collections.abc import Sequence
 from typing import Any
@@ -54,7 +54,7 @@ def main() -> None:
     varNames = ['x'+str(i) for i in range(args.n)]
     x = [Var(varName) for varName in varNames]
     print('n={n} jobs, m={m} machines'.format(n=args.n, m=args.m))
-    dtree = func2dtree(lpt, FuncArgs(x, args.m), LinConstrTreeExplorer(orderings=(varNames,)))
+    dtree = func2dtree(lpt, (x, args.m), LinConstrTreeExplorer(orderings=(varNames,)))
     if args.output is not None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
