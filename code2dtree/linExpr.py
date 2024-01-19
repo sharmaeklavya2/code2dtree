@@ -3,7 +3,7 @@ from collections.abc import Collection, Mapping, Sequence, Set
 from typing import Any, Optional
 from .expr import Var, Expr, BinExpr
 from .aggExpr import AggExpr
-from .rrtg import TreeExplorer
+from .treeExplorer import TreeExplorer
 
 
 OSeq = Sequence[object]

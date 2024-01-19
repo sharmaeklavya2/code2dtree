@@ -5,11 +5,13 @@
 from .expr import *
 from .node import *
 from .rrtg import *
+from .treeExplorer import *
 
 __all__ = [
     'Expr', 'Var', 'BinExpr',
     'Node', 'LeafNode', 'ReturnNode', 'NothingNode', 'InternalNode',
-    'IfNode', 'FrozenIfNode', 'printGraphViz', 'getLeaves',
-    'TreeExplorer', 'CachedTreeExplorer', 'func2dtree', 'FuncArgs', 'checkpoint',
+    'IfNode', 'FrozenIfNode', 'CheckpointNode', 'printGraphViz', 'getLeaves',
+    'TreeExplorer', 'CachedTreeExplorer',
+    'func2dtree', 'FuncArgs', 'checkpoint',
     ]
-# from .linCmpExpr import *  # noqa
+# from .linExpr import *  # noqa
