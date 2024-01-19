@@ -99,6 +99,19 @@ class FrozenIfNode(InternalNode):
             self.kids[0].print(fp, indent)
 
 
+class CheckpointNode(InternalNode):
+    def __init__(self, value: object, parent: Optional[InternalNode]):
+        super().__init__(value, parent, 1)
+
+    def print(self, fp: TextIO, indent: int = 0) -> None:
+        noneString = '  ' * (indent + 1) + '(unfinished)'
+        print('  ' * indent + 'print: ' + str(self.expr))
+        if self.kids[0] is None:
+            print(noneString, file=fp)
+        else:
+            self.kids[0].print(fp, indent)
+
+
 def getLeaves(root: Optional[Node]) -> Iterable[LeafNode]:
     if root is None:
         print('getLeaves: found None node', file=sys.stderr)
@@ -111,12 +124,12 @@ def getLeaves(root: Optional[Node]) -> Iterable[LeafNode]:
         raise TypeError('getLeaves: root has type {}'.format(type(root).__name__))
 
 
-GraphEdge = tuple[int, int, int]
+GraphEdge = tuple[int, int, Optional[int]]
 
 
 def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
     V = []
-    E = []
+    E: list[GraphEdge] = []
     id = 0
 
     def explore(u: Node, ui: int) -> None:
@@ -136,6 +149,15 @@ def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
                 vi = id
                 E.append((ui, vi, int(u.b)))
                 explore(v, vi)
+        elif isinstance(u, CheckpointNode):
+            v = u.kids[0]
+            if v is not None:
+                id += 1
+                vi = id
+                E.append((ui, vi, None))
+                explore(v, vi)
+        elif isinstance(u, InternalNode):
+            raise TypeError('node type {} not supported'.format(repr(type(u).__name__)))
 
     if root is not None:
         explore(root, 0)
@@ -153,5 +175,8 @@ def printGraphViz(root: Optional[Node], fp: TextIO) -> None:
         for i, w in enumerate(V):
             print('v{} [label="{}"];'.format(i, prettyExprRepr(w.expr)), file=fp)
         for (u, v, label) in E:
-            print('v{} -> v{} [label="{}"];'.format(u, v, label), file=fp)
+            if label is None:
+                print(f'v{u} -> v{v};', file=fp)
+            else:
+                print(f'v{u} -> v{v} [label="{label}"];', file=fp)
         print('}', file=fp)

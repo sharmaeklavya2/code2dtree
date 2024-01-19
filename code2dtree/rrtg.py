@@ -1,9 +1,9 @@
 from __future__ import annotations
 from collections.abc import Callable
-from typing import Optional
+from typing import Optional, TextIO
 
 from .expr import Expr
-from .node import Node, InternalNode, IfNode, FrozenIfNode, ReturnNode
+from .node import Node, InternalNode, IfNode, FrozenIfNode, CheckpointNode, ReturnNode
 
 
 class TreeExplorer:
@@ -67,6 +67,17 @@ class RepeatedRunTreeGen:
         self.current = self.current.kids[i]
         self.kidIndex = i
 
+    def createAndGoDown(self, node: InternalNode, i: int) -> None:
+        assert self.current is None
+        if self.parent is not None:
+            assert self.kidIndex is not None
+            self.parent.kids[self.kidIndex] = node
+        else:
+            self.root = node
+        self.parent = node
+        self.current = None
+        self.kidIndex = i
+
     def decideIf(self, expr: Expr) -> bool:
         if self.current is not None:
             assert isinstance(self.current, IfNode) or isinstance(self.current, FrozenIfNode)
@@ -99,15 +110,18 @@ class RepeatedRunTreeGen:
                 node: InternalNode = IfNode(expr, self.parent)
             else:
                 node = FrozenIfNode(expr, self.parent, b)
-            if self.parent is not None:
-                assert self.kidIndex is not None
-                self.parent.kids[self.kidIndex] = node
-            else:
-                self.root = node
-            self.parent = node
-            self.current = None
-            self.kidIndex = b if checkOther else 0
+            self.createAndGoDown(node, b if checkOther else 0)
             return b
+
+    def checkpoint(self, v: object, checkConsistency: bool) -> None:
+        if self.current is not None:
+            assert isinstance(self.current, CheckpointNode)
+            if checkConsistency:
+                assert self.current.expr == v
+            self.goDown(0)
+        else:
+            node = CheckpointNode(v, self.parent)
+            self.createAndGoDown(node, 0)
 
     def reportEnd(self, expr: object) -> None:
         assert self.current is None
@@ -146,3 +160,11 @@ def func2dtree(func: Callable[..., object], funcArgs: FuncArgs, treeExplorer: Op
     gen.run(func, funcArgs)
     assert gen.root is not None
     return gen.root
+
+
+def checkpoint(v: object, checkConsistency: bool = False, fp: Optional[TextIO] = None) -> None:
+    if Expr.globalTreeGen is None:
+        if fp is not None:
+            print(v, file=fp)
+    else:
+        Expr.globalTreeGen.checkpoint(v, checkConsistency)

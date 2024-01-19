@@ -4,7 +4,7 @@
 
 import sys
 import argparse
-from code2dtree import Var, func2dtree, printGraphViz, FuncArgs
+from code2dtree import Var, func2dtree, printGraphViz, FuncArgs, checkpoint
 from code2dtree.linExpr import LinConstrTreeExplorer
 from collections.abc import Sequence
 from typing import Any
@@ -30,13 +30,17 @@ def lpt(x: Sequence[CompT], m: int) -> Sequence[int]:
         return list(range(n))
 
     assn = list(range(m))
-    assn.append(m-1)
     loads = list(x[:m])
+    for j in range(m):
+        checkpoint(f'job {j} -> machine {j}')
+    assn.append(m-1)
     loads[m-1] += x[m]
+    checkpoint(f'job {m} -> machine {m-1}')
     for j in range(m+1, n):
         i = argmin(loads)
         assn.append(i)
         loads[i] += x[j]
+        checkpoint(f'job {j} -> machine {i}')
     return assn
 
 

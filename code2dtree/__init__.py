@@ -10,6 +10,6 @@ __all__ = [
     'Expr', 'Var', 'BinExpr',
     'Node', 'LeafNode', 'ReturnNode', 'NothingNode', 'InternalNode',
     'IfNode', 'FrozenIfNode', 'printGraphViz', 'getLeaves',
-    'TreeExplorer', 'CachedTreeExplorer', 'RepeatedRunTreeGen', 'func2dtree', 'FuncArgs',
+    'TreeExplorer', 'CachedTreeExplorer', 'func2dtree', 'FuncArgs', 'checkpoint',
     ]
 # from .linCmpExpr import *  # noqa
