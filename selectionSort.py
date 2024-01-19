@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from code2dtree import Var, func2dtree, printGraphViz
+from code2dtree import Var, func2dtree, printGraphViz, FuncArgs
 from typing import Any
 
 
