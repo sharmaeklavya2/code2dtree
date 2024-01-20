@@ -81,6 +81,9 @@ BIN_OPS = {
     '**': 'pow',
     '>>': 'lshift',
     '<<': 'rshift',
+    '&': 'and',
+    '^': 'xor',
+    '|': 'or',
     '<': 'lt',
     '≤': 'le',
     '>': 'gt',
@@ -90,24 +93,70 @@ BIN_OPS = {
 }
 
 
-BinExprFunc = Callable[[Expr, Expr], BinExpr]
+BinExprFunc = Callable[[Expr, object], BinExpr]
 
 
 def getBinMethods(op: str) -> tuple[BinExprFunc, BinExprFunc]:
-    def binMethod(self: Expr, other: Expr) -> BinExpr:
+    def binMethod(self: Expr, other: object) -> BinExpr:
         return BinExpr(op, self, other)
 
-    def rbinMethod(self: Expr, other: Expr) -> BinExpr:
+    def rbinMethod(self: Expr, other: object) -> BinExpr:
         return BinExpr(op, other, self)
 
     return (binMethod, rbinMethod)
 
 
+class UnExpr(Expr):
+    def __init__(self, op: str, arg: object, isFunc: bool = True):
+        super().__init__()
+        self.op = op
+        self.arg = arg
+        self.isFunc = isFunc
+
+    def __repr__(self) -> str:
+        return '{}({}, {})'.format(self.__class__.__name__, repr(self.op), repr(self.arg))
+
+    def __str__(self) -> str:
+        if self.isFunc:
+            return '{}({})'.format(str(self.op), str(self.arg))
+        else:
+            return '({} {})'.format(str(self.op), str(self.arg))
+
+    def key(self) -> object:
+        argKey = self.arg.key() if isinstance(self.arg, Expr) else self.arg
+        return (self.__class__.__name__, self.op, argKey)
+
+
+UN_OPS = {
+    '+': 'pos',
+    '-': 'neg',
+    '~': 'invert',
+}
+
+UN_FUNCS = ['abs', 'round', 'floor', 'ceil']
+
+
+UnExprFunc = Callable[[Expr], UnExpr]
+
+
+def getUnMethod(op: str, isFunc: bool) -> UnExprFunc:
+    def unMethod(self: Expr) -> UnExpr:
+        return UnExpr(op, self, isFunc)
+
+    return unMethod
+
+
 def overloadOps() -> None:
     for op, pyopname in BIN_OPS.items():
-        func, rfunc = getBinMethods(op)
-        setattr(Expr, '__' + pyopname + '__', func)
-        setattr(Expr, '__r' + pyopname + '__', rfunc)
+        bfunc, brfunc = getBinMethods(op)
+        setattr(Expr, '__' + pyopname + '__', bfunc)
+        setattr(Expr, '__r' + pyopname + '__', brfunc)
+    for op, pyopname in UN_OPS.items():
+        ufunc = getUnMethod(op, False)
+        setattr(Expr, '__' + pyopname + '__', ufunc)
+    for fname in UN_FUNCS:
+        ufunc = getUnMethod(fname, True)
+        setattr(Expr, '__' + fname + '__', ufunc)
 
 
 overloadOps()
