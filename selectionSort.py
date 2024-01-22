@@ -3,10 +3,10 @@
 import sys
 import argparse
 from code2dtree import Var, func2dtree, printGraphViz
-from typing import Any
+from code2dtree.types import CompT
 
 
-def selectionSorted(a: list[Any]) -> list[Any]:
+def selectionSorted(a: list[CompT]) -> list[CompT]:
     a = a.copy()
     n = len(a)
     for i in range(n):

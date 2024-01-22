@@ -7,13 +7,10 @@ import argparse
 from code2dtree import Var, func2dtree, printGraphViz, checkpoint
 from code2dtree.linExpr import LinConstrTreeExplorer
 from collections.abc import Sequence
-from typing import Any
+from code2dtree.types import Real
 
 
-CompT = Any  # Comparable
-
-
-def argmin(x: Sequence[CompT]) -> int:
+def argmin(x: Sequence[Real]) -> int:
     """Smallest index of minimum value in non-empty list."""
     n = len(x)
     minIndex, minValue = 0, x[0]
@@ -23,7 +20,7 @@ def argmin(x: Sequence[CompT]) -> int:
     return minIndex
 
 
-def lpt(x: Sequence[CompT], m: int) -> Sequence[int]:
+def lpt(x: Sequence[Real], m: int) -> Sequence[int]:
     """Jobs have sizes x. There are m machines."""
     n = len(x)
     if n <= m:
