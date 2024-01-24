@@ -7,8 +7,7 @@ NINFTY_STR = '-∞'
 
 
 class Interval(Generic[CompT]):
-
-    def __init__(self, beg: Optional[CompT], end: Optional[CompT], begClosed: bool = True, endClosed: bool = True):
+    def __init__(self, beg: Optional[CompT], end: Optional[CompT], begClosed: bool, endClosed: bool):
         # None means -infty or +infty
         self.beg = beg
         self.end = end
@@ -37,9 +36,14 @@ class Interval(Generic[CompT]):
             self.beg > self.end or (self.beg >= self.end and not (self.begClosed and self.endClosed)))
 
     def equals(self, other: Interval[CompT]) -> bool:
-        return (isinstance(other, Interval)
-            and (self.beg == other.beg and self.begClosed is other.begClosed)
-            and (self.end == other.end and self.endClosed is other.endClosed))
+        return (self.beg == other.beg and self.begClosed is other.begClosed
+            and self.end == other.end and self.endClosed is other.endClosed)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Interval) and self.equals(other)
+
+    def __hash__(self):
+        return hash((self.beg, self.end, self.begClosed, self.endClosed))
 
     def intersect(self, other: Interval[CompT]) -> Interval[CompT]:
         beg: Optional[CompT]
