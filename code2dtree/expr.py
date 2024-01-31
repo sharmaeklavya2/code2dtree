@@ -51,7 +51,7 @@ class Var(Expr):
 
 
 def getVarList(listName: str, n: int) -> list[Var]:
-    return [Var(f'x[{i}]') for i in range(n)]
+    return [Var.get(f'x[{i}]') for i in range(n)]
 
 
 class BinExpr(Expr):
