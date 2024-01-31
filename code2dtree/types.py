@@ -14,6 +14,24 @@ def validateRealness(x: object) -> Real:
     return x
 
 
+def strToIntOrFloat(s: str) -> int | float:
+    try:
+        return int(s)
+    except ValueError:
+        s = s.replace('∞', 'inf')
+        return float(s)
+
+
+def strToReal(s: str) -> Real:
+    parts = s.split('/')
+    if len(parts) == 2:
+        return Fraction(int(parts[0]), int(parts[1]))
+    elif len(parts) == 1:
+        return strToIntOrFloat(parts[0])
+    else:
+        raise ValueError('too many slashes')
+
+
 class Comparable(Protocol):
     # from https://github.com/python/typing/issues/59#issuecomment-353878355
     @abstractmethod

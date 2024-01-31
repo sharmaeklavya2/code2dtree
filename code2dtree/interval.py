@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Optional
-from code2dtree.types import Real
+from code2dtree.types import Real, strToReal
 
 INFTY_STR = '∞'
 NINFTY_STR = '-∞'
@@ -13,6 +13,15 @@ class Interval:
         self.end = end
         self.begClosed = begClosed
         self.endClosed = endClosed
+
+    @classmethod
+    def fromStr(cls, s: str) -> Interval:
+        if s[0] not in '([' or s[-1] not in ')]':
+            raise ValueError('incorrect brackets')
+        parts = s[1: -1].split(',')
+        if len(parts) != 2:
+            raise ValueError('string should have exactly 1 comma')
+        return Interval(strToReal(parts[0]), strToReal(parts[1]), s[0] == '[', s[-1] == ']')
 
     def __str__(self) -> str:
         return ''.join((
@@ -40,7 +49,10 @@ class Interval:
             and self.end == other.end and self.endClosed is other.endClosed)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, Interval) and self.equals(other)
+        if isinstance(other, Interval):
+            return self.equals(other)
+        else:
+            return NotImplemented
 
     def __hash__(self) -> int:
         return hash((self.beg, self.end, self.begClosed, self.endClosed))
@@ -75,6 +87,9 @@ class Interval:
             end, endClosed = self.end, self.endClosed and other.endClosed
 
         return Interval(beg, end, begClosed, endClosed)
+
+    def __and__(self, other: Interval) -> Interval:
+        return self.intersect(other)
 
     def containsSet(self, other: Interval) -> bool:
         return self.intersect(other).equals(other)
