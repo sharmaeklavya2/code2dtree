@@ -42,7 +42,7 @@ class Interval(Generic[CompT]):
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Interval) and self.equals(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.beg, self.end, self.begClosed, self.endClosed))
 
     def intersect(self, other: Interval[CompT]) -> Interval[CompT]:
