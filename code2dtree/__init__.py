@@ -8,7 +8,7 @@ from .rrtg import *
 from .treeExplorer import *
 
 __all__ = [
-    'Expr', 'Var', 'BinExpr',
+    'Expr', 'Var', 'BinExpr', 'UnExpr', 'getVarList',
     'Node', 'LeafNode', 'ReturnNode', 'NothingNode', 'InternalNode',
     'IfNode', 'FrozenIfNode', 'CheckpointNode', 'printGraphViz', 'getLeaves',
     'TreeExplorer', 'CachedTreeExplorer',

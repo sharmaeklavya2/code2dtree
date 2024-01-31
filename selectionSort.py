@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from code2dtree import Var, func2dtree, printGraphViz
+from code2dtree import func2dtree, getVarList, printGraphViz
 from code2dtree.types import CompT
 
 
@@ -22,7 +22,7 @@ def main() -> None:
     parser.add_argument('-o', '--output', help='path to dot output file')
     args = parser.parse_args()
 
-    a = [Var('x'+str(i)) for i in range(args.n)]
+    a = getVarList('a', args.n)
     print('input:', a)
     dtree = func2dtree(selectionSorted, (a,))
     if args.output is not None:

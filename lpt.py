@@ -4,7 +4,7 @@
 
 import sys
 import argparse
-from code2dtree import Var, func2dtree, printGraphViz, checkpoint
+from code2dtree import checkpoint, func2dtree, getVarList, printGraphViz
 from code2dtree.linExpr import LinConstrTreeExplorer
 from collections.abc import Sequence
 from code2dtree.types import Real
@@ -44,9 +44,8 @@ def main() -> None:
     parser.add_argument('-o', '--output', help='path to dot output file')
     args = parser.parse_args()
 
-    varNames = ['x'+str(i) for i in range(args.n)]
-    x = [Var(varName) for varName in varNames]
     print('n={n} jobs, m={m} machines'.format(n=args.n, m=args.m))
+    x = getVarList('x', args.n)
     te = LinConstrTreeExplorer([x[i-1] >= x[i] for i in range(1, args.n)])
     dtree = func2dtree(greedy, (x, args.m), te)
     if args.output is not None:

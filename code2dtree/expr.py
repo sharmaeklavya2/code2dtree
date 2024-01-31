@@ -50,6 +50,10 @@ class Var(Expr):
         return (self.__class__.__name__, self.name)
 
 
+def getVarList(listName: str, n: int) -> list[Var]:
+    return [Var(f'x[{i}]') for i in range(n)]
+
+
 class BinExpr(Expr):
     def __init__(self, op: str, larg: object, rarg: object):
         super().__init__()
