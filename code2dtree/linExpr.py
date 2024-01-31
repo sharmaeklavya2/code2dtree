@@ -8,8 +8,8 @@ from .types import Real, validateRealness
 from .interval import Interval
 
 ORSet = Set[tuple[object, Real]]
-ConstrMap = Mapping[ORSet, Interval[Real]]
-ConstrDict = dict[ORSet, Interval[Real]]
+ConstrMap = Mapping[ORSet, Interval]
+ConstrDict = dict[ORSet, Interval]
 
 FLIP_OP = {  # x op y iff y FLIP_OP[op] x
     '>': '<',
@@ -98,11 +98,11 @@ def parseLinCmpExpr(expr: object) -> tuple[Mapping[object, Real], str, Real]:
         raise ValueError('expected BinExpr with comparison operator')
 
 
-def opToInterval(op: str, v: Real) -> Interval[Real]:
+def opToInterval(op: str, v: Real) -> Interval:
     if op in ('<', '≤'):
-        return Interval[Real](None, v, False, op == '≤')
+        return Interval(None, v, False, op == '≤')
     else:
-        return Interval[Real](v, None, op == '≥', False)
+        return Interval(v, None, op == '≥', False)
 
 
 def evalOp(larg: Real, op: str, rarg: Real) -> bool:

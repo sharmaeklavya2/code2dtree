@@ -1,13 +1,13 @@
 from __future__ import annotations
-from typing import Generic, Optional
-from .types import CompT
+from typing import Optional
+from code2dtree.types import Real
 
 INFTY_STR = '∞'
 NINFTY_STR = '-∞'
 
 
-class Interval(Generic[CompT]):
-    def __init__(self, beg: Optional[CompT], end: Optional[CompT], begClosed: bool, endClosed: bool):
+class Interval:
+    def __init__(self, beg: Optional[Real], end: Optional[Real], begClosed: bool, endClosed: bool):
         # None means -infty or +infty
         self.beg = beg
         self.end = end
@@ -26,7 +26,7 @@ class Interval(Generic[CompT]):
     def __repr__(self) -> str:
         return self.__class__.__name__ + str(self)
 
-    def contains(self, x: CompT) -> bool:
+    def contains(self, x: Real) -> bool:
         leftIn = self.beg is None or x > self.beg or (x >= self.beg and self.begClosed)
         rightIn = self.end is None or x < self.end or (x <= self.end and self.endClosed)
         return leftIn and rightIn
@@ -35,7 +35,7 @@ class Interval(Generic[CompT]):
         return self.beg is not None and self.end is not None and (
             self.beg > self.end or (self.beg >= self.end and not (self.begClosed and self.endClosed)))
 
-    def equals(self, other: Interval[CompT]) -> bool:
+    def equals(self, other: Interval) -> bool:
         return (self.beg == other.beg and self.begClosed is other.begClosed
             and self.end == other.end and self.endClosed is other.endClosed)
 
@@ -45,8 +45,8 @@ class Interval(Generic[CompT]):
     def __hash__(self) -> int:
         return hash((self.beg, self.end, self.begClosed, self.endClosed))
 
-    def intersect(self, other: Interval[CompT]) -> Interval[CompT]:
-        beg: Optional[CompT]
+    def intersect(self, other: Interval) -> Interval:
+        beg: Optional[Real]
         begClosed: bool
         if self.beg is None:
             if other.beg is None:
@@ -60,7 +60,7 @@ class Interval(Generic[CompT]):
         else:  # self.beg == other.beg
             beg, begClosed = self.beg, self.begClosed and other.begClosed
 
-        end: Optional[CompT]
+        end: Optional[Real]
         endClosed: bool
         if self.end is None:
             if other.end is None:
@@ -76,8 +76,8 @@ class Interval(Generic[CompT]):
 
         return Interval(beg, end, begClosed, endClosed)
 
-    def containsSet(self, other: Interval[CompT]) -> bool:
+    def containsSet(self, other: Interval) -> bool:
         return self.intersect(other).equals(other)
 
-    def isDisjoint(self, other: Interval[CompT]) -> bool:
+    def isDisjoint(self, other: Interval) -> bool:
         return self.intersect(other).isEmpty()
