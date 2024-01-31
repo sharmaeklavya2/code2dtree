@@ -1,72 +1,45 @@
 from __future__ import annotations
-from collections.abc import Collection, Mapping, Sequence, Set
-from typing import Any, Optional
-from .expr import Var, Expr, BinExpr
+from collections.abc import Mapping, Sequence, Set
+from typing import TextIO
+from .expr import Var, Expr, BinExpr, UnExpr
 from .aggExpr import AggExpr
 from .treeExplorer import TreeExplorer
+from .types import Real, validateRealness
+from .interval import Interval
 
+ORSet = Set[tuple[object, Real]]
+ConstrMap = Mapping[ORSet, Interval[Real]]
+ConstrDict = dict[ORSet, Interval[Real]]
 
-OSeq = Sequence[object]
-OSeqColl = Collection[OSeq]
+FLIP_OP = {  # x op y iff y FLIP_OP[op] x
+    '>': '<',
+    '≥': '≤',
+    '<': '>',
+    '≤': '≥',
+}
 
-
-class LinCmpExpr(Expr):
-    def __init__(self, coeffDict: Mapping[object, Any], op: str, rhs: Any):
-        self.coeffDict = coeffDict
-        self.rhs = rhs
-        self.op = op
-
-    def __repr__(self) -> str:
-        return '{}({}, op={}, rhs={})'.format(
-            self.__class__.__name__, self.coeffDict, repr(self.op), repr(self.rhs))
-
-    def __str__(self) -> str:
-        terms = []
-        for i, (varName, coeff) in enumerate(self.coeffDict.items()):
-            if coeff != 0:
-                signStr = '- ' if coeff < 0 else ('+ ' if i > 0 else '')
-                coeff = -coeff if coeff < 0 else coeff
-                coeffStr = str(coeff) if coeff != 1 else ''
-                terms.append(signStr + coeffStr + str(varName))
-        return ' '.join(terms) + ' {} {}'.format(self.op, str(self.rhs))
-
-    def key(self) -> object:
-        return (self.__class__.__name__, self.op, self.rhs, frozenset(self.coeffDict.items()))
-
-    def negate(self) -> LinCmpExpr:
-        return LinCmpExpr(self.coeffDict, NEG_OP[self.op], self.rhs)
-
-
-NEG_OP = {
-    '<': '≥',
+NEG_OP = {  # x op y iff not(x NEG_OP[op] y)
     '>': '≤',
     '≥': '<',
+    '<': '≥',
     '≤': '>',
-    '==': '≠',
-    '≠': '==',
 }
 
 
-FLIP_OP_TO_G = {
-    '>': ('>', 1),
-    '≥': ('≥', 1),
-    '==': ('==', 1),
-    '<': ('>', -1),
-    '≤': ('≥', -1),
-}
-
-
-def addToDict(d: dict[object, Any], k: object, v: Any) -> None:
-    try:
-        d[k] += v
-    except KeyError:
-        d[k] = v
-
-
-def parseAffineHelper(expr: object, coeffMul: Any, coeffDict: dict[object, Any]) -> Any:
+def parseAffineHelper(expr: object, coeffMul: Real, coeffDict: dict[object, Real]) -> Real:
     if isinstance(expr, Var):
-        addToDict(coeffDict, expr.name, coeffMul)
+        try:
+            coeffDict[expr.name] += coeffMul
+        except KeyError:
+            coeffDict[expr.name] = coeffMul
         return 0
+    elif isinstance(expr, UnExpr):
+        if expr.op == '+':
+            return parseAffineHelper(expr.arg, coeffMul, coeffDict)
+        elif expr.op == '-':
+            return parseAffineHelper(expr.arg, -coeffMul, coeffDict)
+        else:
+            raise ValueError('parseAffineHelper: unsupported operator ' + expr.op)
     elif isinstance(expr, BinExpr):
         if expr.op == '+':
             return (parseAffineHelper(expr.larg, coeffMul, coeffDict)
@@ -80,9 +53,9 @@ def parseAffineHelper(expr: object, coeffMul: Any, coeffDict: dict[object, Any])
             if isLExpr and isRExpr:
                 raise ValueError('parseAffineHelper: encountered product of expressions')
             elif isLExpr:
-                return parseAffineHelper(expr.larg, coeffMul * expr.rarg, coeffDict)
+                return parseAffineHelper(expr.larg, coeffMul * validateRealness(expr.rarg), coeffDict)
             elif isRExpr:
-                return parseAffineHelper(expr.rarg, coeffMul * expr.larg, coeffDict)
+                return parseAffineHelper(expr.rarg, coeffMul * validateRealness(expr.larg), coeffDict)
             else:
                 raise ValueError('parseAffineHelper: encountered product of non-expressions')
         else:
@@ -95,81 +68,133 @@ def parseAffineHelper(expr: object, coeffMul: Any, coeffDict: dict[object, Any])
     elif isinstance(expr, Expr):
         raise ValueError('parseAffineHelper: unknown Expr type ' + type(expr).__name__)
     else:
-        return expr * coeffMul
+        return validateRealness(expr) * coeffMul
 
 
-def parseLinCmpExpr(expr: object) -> LinCmpExpr:
-    if isinstance(expr, LinCmpExpr):
-        return expr
-    elif isinstance(expr, BinExpr):
-        coeffDict: dict[object, Any] = {}
-        op, baseCoeffMul = FLIP_OP_TO_G[expr.op]
-        constTerm = 0
-        for (coeffMul, subExpr) in ((baseCoeffMul, expr.larg), (-baseCoeffMul, expr.rarg)):
-            constTerm += parseAffineHelper(subExpr, coeffMul, coeffDict)
-        return LinCmpExpr(coeffDict, op, -constTerm)
+def canonicalizeDict(d: Mapping[object, Real]) -> tuple[Mapping[object, Real], bool]:
+    minKey = min(d.keys())  # type: ignore  # works for str keys. I'll either change the algo or Expr's annotation.
+    if d[minKey] >= 0:
+        return (d, False)
+    else:
+        return ({k: -v for k, v in d.items()}, True)
+
+
+def parseLinCmpExpr(expr: object) -> tuple[Mapping[object, Real], str, Real]:
+    if isinstance(expr, BinExpr) and expr.op in FLIP_OP.keys():
+        coeffDict: dict[object, Real] = {}
+        rhs = - (parseAffineHelper(expr.larg, 1, coeffDict)
+            + parseAffineHelper(expr.rarg, -1, coeffDict))
+        delKeys = [k for k, v in coeffDict.items() if v == 0]
+        for k in delKeys:
+            del coeffDict[k]
+        coeffMap, flip = canonicalizeDict(coeffDict)
+        del coeffDict
+        if flip:
+            op, rhs = FLIP_OP[expr.op], -rhs
+        else:
+            op = expr.op
+        return (coeffMap, op, rhs)
     else:
         raise ValueError('expected BinExpr with comparison operator')
 
 
-def domination(expr: LinCmpExpr, orderings: OSeqColl) -> Optional[bool]:
-    # return True or False if we can infer expr's truth based on orderings, return None otherwise.
-    if expr.op == '==':
-        return None
+def opToInterval(op: str, v: Real) -> Interval[Real]:
+    if op in ('<', '≤'):
+        return Interval[Real](None, v, False, op == '≤')
+    else:
+        return Interval[Real](v, None, op == '≥', False)
 
-    orderedVars: Set[object] = set()
-    for ordering in orderings:
-        orderedVars |= set(ordering)
-    unorderedVars = expr.coeffDict.keys() - orderedVars
 
-    allPos = all([expr.coeffDict[varName] >= 0 for varName in unorderedVars])
-    allNeg = all([expr.coeffDict[varName] <= 0 for varName in unorderedVars])
-    for ordering in orderings:
-        coeffSum = 0
-        for varName in ordering:
-            if not (allPos or allNeg):
-                return None
-            coeffSum += expr.coeffDict.get(varName, 0)
-            if coeffSum < 0:
-                allPos = False
-            if coeffSum > 0:
-                allNeg = False
+def evalOp(larg: Real, op: str, rarg: Real) -> bool:
+    if op == '<':
+        return larg < rarg
+    elif op == '>':
+        return larg > rarg
+    elif op == '≥':
+        return larg >= rarg
+    elif op == '≤':
+        return larg <= rarg
+    else:
+        raise ValueError('invalid operator ' + op)
 
-    rhs = expr.rhs
-    if expr.op in ('<', '≤'):
-        allPos, allNeg, rhs = allNeg, allPos, -rhs
 
-    if allPos and rhs <= 0:
-        return True
-    if allNeg and rhs >= 0:
-        return False
-    return None
+def addConstrToDict(expr: Expr, b: bool, d: ConstrDict) -> None:
+    coeffDict, op, rhs = parseLinCmpExpr(expr)
+    if not coeffDict:
+        exprValue = evalOp(0, op, rhs)
+        if exprValue != b:
+            raise Exception("Entering impossible scenario.")
+        return
+    if not b:
+        op = NEG_OP[op]
+    coeffs = frozenset(coeffDict.items())
+    oldInt = d.get(coeffs)
+    newInt = opToInterval(op, rhs)
+    if oldInt is None:
+        d[coeffs] = newInt
+    else:
+        intersectInt = oldInt.intersect(newInt)
+        if intersectInt.isEmpty():
+            raise Exception("Entering impossible scenario.")
+        else:
+            d[coeffs] = intersectInt
+
+
+def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
+    isFirst = True
+    for coeffs, interval in d.items():
+        lineParts = []
+        for varName, coeff in coeffs:
+            if coeff == 0:
+                continue
+            elif coeff < 0:
+                lineParts.append('-')
+                coeff = -coeff
+            elif not isFirst:
+                lineParts.append('+')
+            if coeff != 1:
+                lineParts.append(str(coeff))
+                lineParts.append('*')
+            lineParts.append(str(varName))
+        isFirst = False
+        lineParts.append('∈')
+        lineParts.append(str(interval))
+        print(' '.join(lineParts), file=fp)
 
 
 class LinConstrTreeExplorer(TreeExplorer):
-    def __init__(self, orderings: OSeqColl = ()) -> None:
+    def __init__(self, baseConstraintsList: Sequence[Expr] = ()) -> None:
         super().__init__()
-        self.orderings = orderings
-        self.cache: dict[object, bool] = {}
+        self.baseConstraintsDict: ConstrDict = {}
+        for expr in baseConstraintsList:
+            addConstrToDict(expr, True, self.baseConstraintsDict)
+        self.constraints: ConstrDict = dict(self.baseConstraintsDict)
 
     def noteIf(self, expr: Expr, b: bool) -> None:
-        lce = parseLinCmpExpr(expr)
-        self.cache[lce.key()] = b
+        addConstrToDict(expr, b, self.constraints)
 
     def decideIf(self, expr: Expr) -> tuple[bool, bool]:
-        linCmpExpr = parseLinCmpExpr(expr)
-        key = linCmpExpr.key()
-        try:
-            b = self.cache[key]
-            return (b, False)
-        except KeyError:
-            domB = domination(linCmpExpr, self.orderings)
-            if domB is not None:
-                self.cache[key] = domB
-                return (domB, False)
+        coeffDict, op, rhs = parseLinCmpExpr(expr)
+        if not coeffDict:
+            exprValue = evalOp(0, op, rhs)
+            return (exprValue, False)
+        coeffs = frozenset(coeffDict.items())
+        oldInt = self.constraints.get(coeffs)
+        falseInt, trueInt = opToInterval(NEG_OP[op], rhs), opToInterval(op, rhs)
+        if oldInt is None:
+            self.constraints[coeffs] = falseInt
+            return (False, True)
+        else:
+            falseInt2, trueInt2 = oldInt.intersect(falseInt), oldInt.intersect(trueInt)
+            if falseInt2.isEmpty():
+                self.constraints[coeffs] = trueInt2
+                return (True, False)
             else:
-                self.cache[key] = False
-                return (False, True)
+                self.constraints[coeffs] = falseInt2
+                return (False, not trueInt2.isEmpty())
 
     def noteReturn(self, expr: object) -> None:
-        self.cache.clear()
+        self.constraints = dict(self.baseConstraintsDict)
+
+    def displayConstraints(self, fp: TextIO) -> None:
+        displayConstraints(self.constraints, fp)

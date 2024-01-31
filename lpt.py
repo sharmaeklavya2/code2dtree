@@ -11,29 +11,25 @@ from code2dtree.types import Real
 
 
 def argmin(x: Sequence[Real]) -> int:
-    """Smallest index of minimum value in non-empty list."""
+    """Largest index of minimum value in non-empty list."""
     n = len(x)
     minIndex, minValue = 0, x[0]
     for i in range(1, n):
-        if x[i] < minValue:
+        if x[i] <= minValue:
             minIndex, minValue = i, x[i]
     return minIndex
 
 
-def lpt(x: Sequence[Real], m: int) -> Sequence[int]:
+def greedy(x: Sequence[Real], m: int) -> Sequence[int]:
     """Jobs have sizes x. There are m machines."""
     n = len(x)
     if n <= m:
         return list(range(n))
-
     assn = list(range(m))
     loads = list(x[:m])
     for j in range(m):
         checkpoint(f'job {j} -> machine {j}')
-    assn.append(m-1)
-    loads[m-1] += x[m]
-    checkpoint(f'job {m} -> machine {m-1}')
-    for j in range(m+1, n):
+    for j in range(m, n):
         i = argmin(loads)
         assn.append(i)
         loads[i] += x[j]
@@ -51,7 +47,8 @@ def main() -> None:
     varNames = ['x'+str(i) for i in range(args.n)]
     x = [Var(varName) for varName in varNames]
     print('n={n} jobs, m={m} machines'.format(n=args.n, m=args.m))
-    dtree = func2dtree(lpt, (x, args.m), LinConstrTreeExplorer(orderings=(varNames,)))
+    te = LinConstrTreeExplorer([x[i-1] >= x[i] for i in range(1, args.n)])
+    dtree = func2dtree(greedy, (x, args.m), te)
     if args.output is not None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
