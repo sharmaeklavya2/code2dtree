@@ -45,7 +45,7 @@ def main() -> None:
     args = parser.parse_args()
 
     print('n={n} jobs, m={m} machines'.format(n=args.n, m=args.m))
-    x = getVarList('x', args.n)
+    x = getVarList('x', args.n, False)
     te = LinConstrTreeExplorer([x[i-1] >= x[i] for i in range(1, args.n)])
     dtree = func2dtree(greedy, (x, args.m), te)
     if args.output is not None:

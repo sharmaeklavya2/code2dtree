@@ -50,8 +50,11 @@ class Var(Expr):
         return (self.__class__.__name__, self.name)
 
 
-def getVarList(listName: str, n: int) -> list[Var]:
-    return [Var.get(f'x[{i}]') for i in range(n)]
+def getVarList(listName: str, n: int, brackets: bool = True) -> list[Var]:
+    if brackets:
+        return [Var.get(f'x[{i}]') for i in range(n)]
+    else:
+        return [Var.get(f'x{i}') for i in range(n)]
 
 
 class BinExpr(Expr):
