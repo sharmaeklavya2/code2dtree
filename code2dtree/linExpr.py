@@ -132,7 +132,11 @@ def evalOp(larg: Real, op: str, rarg: Real) -> bool:
         raise ValueError('invalid operator ' + op)
 
 
-def addConstrToDict(expr: Expr, b: bool, d: ConstrDict) -> None:
+def addConstrToDict(expr: Expr | bool, b: bool, d: ConstrDict) -> None:
+    if isinstance(expr, bool):
+        if expr != b:
+            raise Exception("Entering impossible scenario.")
+        return
     coeffDict, op, rhs = parseLinCmpExpr(expr)
     if not coeffDict:
         exprValue = evalOp(0, op, rhs)
@@ -177,7 +181,7 @@ def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
 
 
 class LinConstrTreeExplorer(TreeExplorer):
-    def __init__(self, baseConstraintsList: Sequence[Expr] = ()) -> None:
+    def __init__(self, baseConstraintsList: Sequence[Expr | bool] = ()) -> None:
         super().__init__()
         self.baseConstraintsDict: ConstrDict = {}
         for expr in baseConstraintsList:
