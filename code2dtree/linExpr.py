@@ -17,6 +17,7 @@ FLIP_OP = {  # x op y iff y FLIP_OP[op] x
     '≥': '≤',
     '<': '>',
     '≤': '≥',
+    '==': '==',
 }
 
 NEG_OP = {  # x op y iff not(x NEG_OP[op] y)
@@ -93,8 +94,25 @@ def canonicalizeDict(d: Mapping[object, Real]) -> tuple[Mapping[object, Real], b
             return ({k: -v for k, v in d.items()}, True)
 
 
-def parseLinCmpExpr(expr: Expr) -> tuple[Mapping[object, Real], str, Real]:
-    if isinstance(expr, BinExpr) and expr.op in FLIP_OP.keys():
+class LinCmpExpr(Expr):
+    def __init__(self, coeffMap: Mapping[object, Real], op: str, rhs: Real):
+        self.coeffMap = coeffMap
+        self.frozenCoeffMap = frozenset(coeffMap.items())
+        self.op = op
+        self.rhs = rhs
+
+    def __repr__(self) -> str:
+        return '{}({}, {}, {})'.format(self.__class__.__name__, repr(self.coeffMap),
+            repr(self.op), repr(self.rhs))
+
+    def key(self) -> object:
+        return (self.__class__.__name__, self.frozenCoeffMap, self.op, self.rhs)
+
+
+def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
+    if isinstance(expr, LinCmpExpr):
+        return expr
+    elif isinstance(expr, BinExpr) and expr.op in FLIP_OP.keys():
         coeffDict: dict[object, Real] = {}
         rhs = - (parseAffineHelper(expr.larg, 1, coeffDict)
             + parseAffineHelper(expr.rarg, -1, coeffDict))
@@ -107,7 +125,7 @@ def parseLinCmpExpr(expr: Expr) -> tuple[Mapping[object, Real], str, Real]:
             op, rhs = FLIP_OP[expr.op], -rhs
         else:
             op = expr.op
-        return (coeffMap, op, rhs)
+        return LinCmpExpr(coeffMap, op, rhs)
     else:
         raise ValueError('expected BinExpr with comparison operator')
 
@@ -137,7 +155,8 @@ def addConstrToDict(expr: Expr | bool, b: bool, d: ConstrDict) -> None:
         if expr != b:
             raise Exception("Entering impossible scenario.")
         return
-    coeffDict, op, rhs = parseLinCmpExpr(expr)
+    linExpr = parseLinCmpExpr(expr)
+    coeffDict, op, rhs = linExpr.coeffMap, linExpr.op, linExpr.rhs
     if not coeffDict:
         exprValue = evalOp(0, op, rhs)
         if exprValue != b:
@@ -192,7 +211,8 @@ class LinConstrTreeExplorer(TreeExplorer):
         addConstrToDict(expr, b, self.constraints)
 
     def decideIf(self, expr: Expr) -> tuple[bool, bool]:
-        coeffDict, op, rhs = parseLinCmpExpr(expr)
+        linExpr = parseLinCmpExpr(expr)
+        coeffDict, op, rhs = linExpr.coeffMap, linExpr.op, linExpr.rhs
         if not coeffDict:
             exprValue = evalOp(0, op, rhs)
             return (exprValue, False)
