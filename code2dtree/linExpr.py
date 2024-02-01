@@ -93,7 +93,7 @@ def canonicalizeDict(d: Mapping[object, Real]) -> tuple[Mapping[object, Real], b
             return ({k: -v for k, v in d.items()}, True)
 
 
-def parseLinCmpExpr(expr: object) -> tuple[Mapping[object, Real], str, Real]:
+def parseLinCmpExpr(expr: Expr) -> tuple[Mapping[object, Real], str, Real]:
     if isinstance(expr, BinExpr) and expr.op in FLIP_OP.keys():
         coeffDict: dict[object, Real] = {}
         rhs = - (parseAffineHelper(expr.larg, 1, coeffDict)
