@@ -203,6 +203,7 @@ class LinConstrTreeExplorer(TreeExplorer):
             self.constraints[coeffs] = falseInt
             return (False, True)
         else:
+            assert not oldInt.isEmpty()
             falseInt2, trueInt2 = oldInt.intersect(falseInt), oldInt.intersect(trueInt)
             if falseInt2.isEmpty():
                 self.constraints[coeffs] = trueInt2
