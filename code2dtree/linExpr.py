@@ -1,6 +1,6 @@
 from __future__ import annotations
-from collections.abc import Mapping, Sequence, Set
-from typing import TextIO
+from collections.abc import Iterable, Mapping, Sequence, Set
+from typing import Optional, TextIO, TypeVar
 from .expr import Var, Expr, BinExpr, UnExpr
 from .aggExpr import AggExpr
 from .treeExplorer import TreeExplorer
@@ -10,6 +10,7 @@ from .interval import Interval
 ORSet = Set[tuple[object, Real]]
 ConstrMap = Mapping[ORSet, Interval]
 ConstrDict = dict[ORSet, Interval]
+T = TypeVar('T')
 
 FLIP_OP = {  # x op y iff y FLIP_OP[op] x
     '>': '<',
@@ -71,12 +72,25 @@ def parseAffineHelper(expr: object, coeffMul: Real, coeffDict: dict[object, Real
         return validateRealness(expr) * coeffMul
 
 
+def argReprMin(a: Iterable[T]) -> Optional[T]:
+    minX = None
+    minY: Optional[str] = None
+    for x in a:
+        y = repr(x)
+        if minY is None or y < minY:
+            minX, minY = x, y
+    return minX
+
+
 def canonicalizeDict(d: Mapping[object, Real]) -> tuple[Mapping[object, Real], bool]:
-    minKey = min(d.keys())  # type: ignore  # works for str keys. I'll either change the algo or Expr's annotation.
-    if d[minKey] >= 0:
+    minKey = argReprMin(d.keys())
+    if minKey is None:  # d is empty
         return (d, False)
     else:
-        return ({k: -v for k, v in d.items()}, True)
+        if d[minKey] >= 0:
+            return (d, False)
+        else:
+            return ({k: -v for k, v in d.items()}, True)
 
 
 def parseLinCmpExpr(expr: object) -> tuple[Mapping[object, Real], str, Real]:
