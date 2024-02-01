@@ -156,7 +156,7 @@ def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
                 lineParts.append(str(coeff))
                 lineParts.append('*')
             lineParts.append(str(varName))
-        isFirst = False
+            isFirst = False
         lineParts.append('∈')
         lineParts.append(str(interval))
         print(' '.join(lineParts), file=fp)
