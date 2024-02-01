@@ -4,7 +4,7 @@ from typing import Optional, TextIO, Union
 
 from .expr import Expr
 from .treeExplorer import TreeExplorer, CachedTreeExplorer
-from .node import Node, InternalNode, IfNode, FrozenIfNode, CheckpointNode, ReturnNode
+from .node import Node, DecisionNode, InternalNode, IfNode, FrozenIfNode, CheckpointNode, ReturnNode
 
 
 class FuncArgs:
@@ -62,7 +62,7 @@ class RepeatedRunTreeGen:
                 return b
 
         # now all kids are unexplored and self.current is not a FrozenIfNode
-        b, checkOther = self.explorer.decideIf(expr)
+        b, checkOther, sexpr = self.explorer.decideIf(expr)
         if self.current is not None:
             assert isinstance(self.current, IfNode)
             if not checkOther:
@@ -73,9 +73,10 @@ class RepeatedRunTreeGen:
                 return b
         else:
             if checkOther:
-                node: InternalNode = IfNode(expr, self.parent)
+                node: DecisionNode = IfNode(expr, self.parent)
             else:
                 node = FrozenIfNode(expr, self.parent, b)
+            node.sexpr = sexpr
             self.createAndGoDown(node, b if checkOther else 0)
             return b
 

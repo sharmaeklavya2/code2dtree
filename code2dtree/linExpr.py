@@ -210,27 +210,27 @@ class LinConstrTreeExplorer(TreeExplorer):
     def noteIf(self, expr: Expr, b: bool) -> None:
         addConstrToDict(expr, b, self.constraints)
 
-    def decideIf(self, expr: Expr) -> tuple[bool, bool]:
+    def decideIf(self, expr: Expr) -> tuple[bool, bool, Optional[Expr]]:
         linExpr = parseLinCmpExpr(expr)
         coeffDict, op, rhs = linExpr.coeffMap, linExpr.op, linExpr.rhs
         if not coeffDict:
             exprValue = evalOp(0, op, rhs)
-            return (exprValue, False)
+            return (exprValue, False, linExpr)
         coeffs = frozenset(coeffDict.items())
         oldInt = self.constraints.get(coeffs)
         falseInt, trueInt = opToInterval(NEG_OP[op], rhs), opToInterval(op, rhs)
         if oldInt is None:
             self.constraints[coeffs] = falseInt
-            return (False, True)
+            return (False, True, linExpr)
         else:
             assert not oldInt.isEmpty()
             falseInt2, trueInt2 = oldInt.intersect(falseInt), oldInt.intersect(trueInt)
             if falseInt2.isEmpty():
                 self.constraints[coeffs] = trueInt2
-                return (True, False)
+                return (True, False, linExpr)
             else:
                 self.constraints[coeffs] = falseInt2
-                return (False, not trueInt2.isEmpty())
+                return (False, not trueInt2.isEmpty(), linExpr)
 
     def noteReturn(self, expr: object) -> None:
         self.constraints = dict(self.baseConstraintsDict)

@@ -1,11 +1,13 @@
+from typing import Optional
 from .expr import Expr
 
 
 class TreeExplorer:
-    def decideIf(self, expr: Expr) -> tuple[bool, bool]:
-        # return pair (b1, b2), where b1 = bool(expr) and b2 decides whether
+    def decideIf(self, expr: Expr) -> tuple[bool, bool, Optional[Expr]]:
+        # return triple (b1, b2, se), where b1 = bool(expr) and b2 decides whether
         # not(expr) should be explored in the future.
-        return (False, True)
+        # se is a simplification of expr, or None if no simplification is proposed
+        return (False, True, None)
 
     def noteIf(self, expr: Expr, b: bool) -> None:
         pass
@@ -23,14 +25,14 @@ class CachedTreeExplorer(TreeExplorer):
         key = expr.key()
         self.cache[key] = b
 
-    def decideIf(self, expr: Expr) -> tuple[bool, bool]:
+    def decideIf(self, expr: Expr) -> tuple[bool, bool, Optional[Expr]]:
         key = expr.key()
         try:
             b = self.cache[key]
-            return (b, False)
+            return (b, False, None)
         except KeyError:
             self.cache[key] = False
-            return (False, True)
+            return (False, True, None)
 
     def noteReturn(self, expr: object) -> None:
         self.cache.clear()

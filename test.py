@@ -84,8 +84,10 @@ class ConstrDecideTest(unittest.TestCase):
     def test2(self) -> None:
         x = Var.get('x')
         te = LinConstrTreeExplorer([x > 0])
-        self.assertEqual(te.decideIf(x <= -2), (False, False))
-        self.assertEqual(te.decideIf(x > x), (False, False))
+        decision, checkOther, sexpr = te.decideIf(x <= -2)
+        self.assertEqual((decision, checkOther), (False, False))
+        decision, checkOther, sexpr = te.decideIf(x > x)
+        self.assertEqual((decision, checkOther), (False, False))
 
 
 if __name__ == '__main__':

@@ -66,7 +66,13 @@ class InternalNode(Node):
         return ', '.join(parts) + ')'
 
 
-class IfNode(InternalNode):
+class DecisionNode(InternalNode):
+    def __init__(self, expr: Expr, parent: Optional[InternalNode], nKids: int):
+        super().__init__(expr, parent, nKids)
+        self.sexpr: Optional[Expr] = None  # simplified expr
+
+
+class IfNode(DecisionNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode]):
         super().__init__(expr, parent, 2)
 
@@ -84,7 +90,7 @@ class IfNode(InternalNode):
             self.kids[0].print(fp, indent+1)
 
 
-class FrozenIfNode(InternalNode):
+class FrozenIfNode(DecisionNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode], b: bool):
         super().__init__(expr, parent, 1)
         self.b = b
