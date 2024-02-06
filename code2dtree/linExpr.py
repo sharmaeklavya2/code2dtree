@@ -178,8 +178,8 @@ def addConstrToDict(expr: Expr | bool, b: bool, d: ConstrDict) -> None:
 
 
 def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
-    isFirst = True
     for coeffs, interval in d.items():
+        isFirst = True
         lineParts = []
         for varName, coeff in coeffs:
             if coeff == 0:
