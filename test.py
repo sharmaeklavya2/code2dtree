@@ -4,6 +4,7 @@ import sys  # noqa
 import unittest
 from code2dtree import Var, BinExpr
 from code2dtree.interval import Interval
+from code2dtree.linExpr import parseLinCmpExpr, LinCmpExpr
 from code2dtree.linExpr import addConstrToDict, ConstrDict, LinConstrTreeExplorer
 from code2dtree.linExpr import displayConstraints  # noqa
 
@@ -88,6 +89,16 @@ class ConstrDecideTest(unittest.TestCase):
         self.assertEqual((decision, checkOther), (False, False))
         decision, checkOther, sexpr = te.decideIf(x > x)
         self.assertEqual((decision, checkOther), (False, False))
+
+
+class LinCmpExprTest(unittest.TestCase):
+    def testStr(self) -> None:
+        x, y = Var.get('x'), Var.get('y')
+        expr1 = parseLinCmpExpr(x - 2 * y >= 3)
+        expr2 = LinCmpExpr({'x': 1, 'y': -2, 'z': 0}, '≥', 3)
+        s = '(x - 2 * y ≥ 3)'
+        self.assertEqual(str(expr1), s)
+        self.assertEqual(str(expr2), s)
 
 
 if __name__ == '__main__':

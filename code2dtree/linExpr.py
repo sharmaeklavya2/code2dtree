@@ -94,6 +94,23 @@ def canonicalizeDict(d: Mapping[object, Real]) -> tuple[Mapping[object, Real], b
             return ({k: -v for k, v in d.items()}, True)
 
 
+def displayLinExprHelper(coeffs: Iterable[tuple[object, Real]], lineParts: list[str]) -> None:
+    isFirst = True
+    for varName, coeff in coeffs:
+        if coeff == 0:
+            continue
+        elif coeff < 0:
+            lineParts.append('-')
+            coeff = -coeff
+        elif not isFirst:
+            lineParts.append('+')
+        if coeff != 1:
+            lineParts.append(str(coeff))
+            lineParts.append('*')
+        lineParts.append(str(varName))
+        isFirst = False
+
+
 class LinCmpExpr(Expr):
     def __init__(self, coeffMap: Mapping[object, Real], op: str, rhs: Real):
         self.coeffMap = coeffMap
@@ -107,6 +124,13 @@ class LinCmpExpr(Expr):
 
     def key(self) -> object:
         return (self.__class__.__name__, self.frozenCoeffMap, self.op, self.rhs)
+
+    def __str__(self) -> str:
+        lineParts: list[str] = []
+        displayLinExprHelper(self.coeffMap.items(), lineParts)
+        lineParts.append(self.op)
+        lineParts.append(str(self.rhs))
+        return '(' + ' '.join(lineParts) + ')'
 
 
 def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
@@ -179,21 +203,8 @@ def addConstrToDict(expr: Expr | bool, b: bool, d: ConstrDict) -> None:
 
 def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
     for coeffs, interval in d.items():
-        isFirst = True
-        lineParts = []
-        for varName, coeff in coeffs:
-            if coeff == 0:
-                continue
-            elif coeff < 0:
-                lineParts.append('-')
-                coeff = -coeff
-            elif not isFirst:
-                lineParts.append('+')
-            if coeff != 1:
-                lineParts.append(str(coeff))
-                lineParts.append('*')
-            lineParts.append(str(varName))
-            isFirst = False
+        lineParts: list[str] = []
+        displayLinExprHelper(coeffs, lineParts)
         lineParts.append('∈')
         lineParts.append(str(interval))
         print(' '.join(lineParts), file=fp)
