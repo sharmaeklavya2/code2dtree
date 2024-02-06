@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 class Expr:
     globalTreeGen: Optional[RepeatedRunTreeGen] = None
+    simplifyAdd = True
 
     def key(self) -> object:
         raise NotImplementedError()
@@ -20,6 +21,39 @@ class Expr:
             return Expr.globalTreeGen.decideIf(self)
         else:
             raise NotImplementedError("forking on expressions is disabled.")
+
+    def __add__(self, other: object) -> Expr:
+        if Expr.simplifyAdd and not isinstance(other, Expr) and other == 0:
+            return self
+        else:
+            return BinExpr('+', self, other)
+
+    def __radd__(self, other: object) -> Expr:
+        if Expr.simplifyAdd and not isinstance(other, Expr) and other == 0:
+            return self
+        else:
+            return BinExpr('+', other, self)
+
+    def __sub__(self, other: object) -> Expr:
+        if Expr.simplifyAdd and not isinstance(other, Expr) and other == 0:
+            return self
+        else:
+            return BinExpr('-', self, other)
+
+    def __rsub__(self, other: object) -> Expr:
+        if Expr.simplifyAdd and not isinstance(other, Expr) and other == 0:
+            return UnExpr('-', self, False)
+        else:
+            return BinExpr('-', other, self)
+
+    def __pos__(self) -> Expr:
+        return self if Expr.simplifyAdd else UnExpr('+', self, False)
+
+    def __neg__(self) -> Expr:
+        if Expr.simplifyAdd and isinstance(self, UnExpr) and self.op == '-':
+            return self.arg
+        else:
+            return UnExpr('-', self, False)
 
 
 class Var(Expr):
@@ -78,8 +112,6 @@ class BinExpr(Expr):
 
 
 BIN_OPS = {
-    '+': 'add',
-    '-': 'sub',
     '*': 'mul',
     '@': 'matmul',
     '/': 'truediv',
@@ -114,7 +146,7 @@ def getBinMethods(op: str) -> tuple[BinExprFunc, BinExprFunc]:
 
 
 class UnExpr(Expr):
-    def __init__(self, op: str, arg: object, isFunc: bool = True):
+    def __init__(self, op: str, arg: Expr, isFunc: bool = True):
         super().__init__()
         self.op = op
         self.arg = arg
@@ -135,8 +167,6 @@ class UnExpr(Expr):
 
 
 UN_OPS = {
-    '+': 'pos',
-    '-': 'neg',
     '~': 'invert',
 }
 
