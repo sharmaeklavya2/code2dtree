@@ -10,7 +10,8 @@ from .treeExplorer import *
 __all__ = [
     'Expr', 'Var', 'BinExpr', 'UnExpr', 'getVarList',
     'Node', 'LeafNode', 'ReturnNode', 'NothingNode', 'InternalNode',
-    'IfNode', 'FrozenIfNode', 'CheckpointNode', 'printGraphViz', 'getLeaves',
+    'IfNode', 'FrozenIfNode', 'CheckpointNode',
+    'PrintOptions', 'printGraphViz', 'getLeaves',
     'TreeExplorer', 'CachedTreeExplorer',
     'func2dtree', 'FuncArgs', 'checkpoint',
     ]
