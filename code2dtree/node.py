@@ -116,17 +116,23 @@ class FrozenIfNode(DecisionNode):
             self.kids[0].print(fp, indent, options)
 
 
-class CheckpointNode(InternalNode):
-    def __init__(self, value: object, parent: Optional[InternalNode]):
+class InfoNode(InternalNode):
+    def __init__(self, value: object, parent: Optional[InternalNode], verb: str):
         super().__init__(value, parent, 1)
+        self.verb = verb
 
     def print(self, fp: TextIO, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
         noneString = '  ' * (indent + 1) + '(unfinished)'
-        print('  ' * indent + 'print: ' + str(self.expr))
+        print('  ' * indent + self.verb + ' ' + str(self.expr))
         if self.kids[0] is None:
             print(noneString, file=fp)
         else:
             self.kids[0].print(fp, indent, options)
+
+
+class CheckpointNode(InfoNode):
+    def __init__(self, value: object, parent: Optional[InternalNode]):
+        super().__init__(value, parent, 'print:')
 
 
 def getLeaves(root: Optional[Node]) -> Iterable[LeafNode]:
@@ -166,7 +172,7 @@ def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
                 vi = id
                 E.append((ui, vi, int(u.b)))
                 explore(v, vi)
-        elif isinstance(u, CheckpointNode):
+        elif isinstance(u, InfoNode):
             v = u.kids[0]
             if v is not None:
                 id += 1
