@@ -1,9 +1,16 @@
 from __future__ import annotations
 import sys
 from collections.abc import Iterable, MutableSequence
-from typing import Optional, TextIO
+from typing import Optional, TextIO, NamedTuple
 
 from .expr import Expr, prettyExprRepr
+
+
+class PrintOptions(NamedTuple):
+    simplify: bool = False
+
+
+DEFAULT_PO = PrintOptions()
 
 
 class Node:
@@ -15,7 +22,7 @@ class Node:
     def __repr__(self) -> str:
         return '{}({}, exp={})'.format(self.__class__.__name__, self.expr, self.explored)
 
-    def print(self, fp: TextIO, indent: int = 0) -> None:
+    def print(self, fp: TextIO, indent: int = 0, printOptions: PrintOptions = DEFAULT_PO) -> None:
         raise NotImplementedError()
 
 
@@ -28,7 +35,7 @@ class ReturnNode(LeafNode):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
         super().__init__(expr, parent)
 
-    def print(self, fp: TextIO, indent: int = 0) -> None:
+    def print(self, fp: TextIO, indent: int = 0, printOptions: PrintOptions = DEFAULT_PO) -> None:
         print('  ' * indent + 'return ' + prettyExprRepr(self.expr), file=fp)
 
 
@@ -36,7 +43,7 @@ class NothingNode(LeafNode):
     def __init__(self, parent: Optional[InternalNode]):
         super().__init__(None, parent)
 
-    def print(self, fp: TextIO, indent: int = 0) -> None:
+    def print(self, fp: TextIO, indent: int = 0, printOptions: PrintOptions = DEFAULT_PO) -> None:
         print('  ' * indent + '(nothing)')
 
 
@@ -76,18 +83,19 @@ class IfNode(DecisionNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode]):
         super().__init__(expr, parent, 2)
 
-    def print(self, fp: TextIO, indent: int = 0) -> None:
+    def print(self, fp: TextIO, indent: int = 0, printOptions: PrintOptions = DEFAULT_PO) -> None:
         noneString = '  ' * (indent + 1) + '(unfinished)'
-        print('  ' * indent + 'if ' + prettyExprRepr(self.expr) + ':', file=fp)
+        expr = self.sexpr if printOptions.simplify else self.expr
+        print('  ' * indent + 'if ' + prettyExprRepr(expr) + ':', file=fp)
         if self.kids[1] is None:
             print(noneString, file=fp)
         else:
-            self.kids[1].print(fp, indent+1)
+            self.kids[1].print(fp, indent+1, printOptions)
         print('  ' * indent + 'else:')
         if self.kids[0] is None:
             print(noneString, file=fp)
         else:
-            self.kids[0].print(fp, indent+1)
+            self.kids[0].print(fp, indent+1, printOptions)
 
 
 class FrozenIfNode(DecisionNode):
@@ -95,27 +103,28 @@ class FrozenIfNode(DecisionNode):
         super().__init__(expr, parent, 1)
         self.b = b
 
-    def print(self, fp: TextIO, indent: int = 0) -> None:
+    def print(self, fp: TextIO, indent: int = 0, printOptions: PrintOptions = DEFAULT_PO) -> None:
         noneString = '  ' * (indent + 1) + '(unfinished)'
+        expr = self.sexpr if printOptions.simplify else self.expr
         print('  ' * indent + 'assert ' + ('' if self.b else 'not(') +
-            prettyExprRepr(self.expr) + ('' if self.b else ')'))
+            prettyExprRepr(expr) + ('' if self.b else ')'))
         if self.kids[0] is None:
             print(noneString, file=fp)
         else:
-            self.kids[0].print(fp, indent)
+            self.kids[0].print(fp, indent, printOptions)
 
 
 class CheckpointNode(InternalNode):
     def __init__(self, value: object, parent: Optional[InternalNode]):
         super().__init__(value, parent, 1)
 
-    def print(self, fp: TextIO, indent: int = 0) -> None:
+    def print(self, fp: TextIO, indent: int = 0, printOptions: PrintOptions = DEFAULT_PO) -> None:
         noneString = '  ' * (indent + 1) + '(unfinished)'
         print('  ' * indent + 'print: ' + str(self.expr))
         if self.kids[0] is None:
             print(noneString, file=fp)
         else:
-            self.kids[0].print(fp, indent)
+            self.kids[0].print(fp, indent, printOptions)
 
 
 def getLeaves(root: Optional[Node]) -> Iterable[LeafNode]:
