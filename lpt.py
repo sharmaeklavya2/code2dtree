@@ -4,7 +4,7 @@
 
 import sys
 import argparse
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from typing import NamedTuple
 from code2dtree import Expr, genFunc2dtree, getVarList, printGraphViz
 from code2dtree.linExpr import LinConstrTreeExplorer
@@ -26,21 +26,20 @@ class AssnEvent(NamedTuple):
     machine: int
 
 
-def greedy(x: Sequence[Real | Expr], m: int) -> Generator[AssnEvent, None, Sequence[int]]:
+def greedy(x: Iterable[Real | Expr], m: int) -> Generator[AssnEvent, None, Sequence[int]]:
     """Jobs have sizes x. There are m machines."""
-    n = len(x)
-    minMN = min(m, n)
-    assn = list(range(minMN))
-    for j in range(minMN):
+    assn = []
+    jobGen = iter(x)
+    loads = []
+    for j, xj in zip(range(m), jobGen):
         yield AssnEvent(job=j, machine=j)
-    if n <= m:
-        return assn
-    loads = list(x[:m])
-    for j in range(m, n):
+        assn.append(j)
+        loads.append(xj)
+    for j, xj in enumerate(jobGen, m):
         i = argmin(loads)
-        assn.append(i)
-        loads[i] += x[j]
         yield AssnEvent(job=j, machine=i)
+        assn.append(i)
+        loads[i] += xj
     return assn
 
 
