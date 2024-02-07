@@ -1,5 +1,6 @@
 from __future__ import annotations
 import sys
+from dataclasses import dataclass
 from collections.abc import Iterable, MutableSequence
 from typing import Optional, TextIO, NamedTuple
 
@@ -13,6 +14,11 @@ class PrintOptions(NamedTuple):
     file: TextIO = sys.stdout
 
 
+@dataclass
+class PrintAttr:
+    visible: bool = True
+
+
 DEFAULT_PO = PrintOptions()
 
 
@@ -21,12 +27,14 @@ class Node:
         self.expr = expr
         self.parent = parent
         self.explored = explored
+        self.printAttr: PrintAttr = PrintAttr()
 
     def __repr__(self) -> str:
         return '{}({}, exp={})'.format(self.__class__.__name__, self.expr, self.explored)
 
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
-        raise NotImplementedError()
+        if self.printAttr.visible:
+            raise NotImplementedError()
 
 
 class LeafNode(Node):
@@ -39,6 +47,8 @@ class ReturnNode(LeafNode):
         super().__init__(expr, parent)
 
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+        if not self.printAttr.visible:
+            return
         print(options.indentStr * indent + 'return ' + prettyExprRepr(self.expr), file=options.file)
 
 
@@ -47,6 +57,8 @@ class NothingNode(LeafNode):
         super().__init__(None, parent)
 
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+        if not self.printAttr.visible:
+            return
         print(options.indentStr * indent + '(nothing)', file=options.file)
 
 
@@ -87,6 +99,8 @@ class IfNode(DecisionNode):
         super().__init__(expr, parent, 2)
 
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+        if not self.printAttr.visible:
+            return
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         expr = self.sexpr if options.simplify else self.expr
         print(options.indentStr * indent + 'if ' + prettyExprRepr(expr) + ':', file=options.file)
@@ -107,6 +121,8 @@ class FrozenIfNode(DecisionNode):
         self.b = b
 
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+        if not self.printAttr.visible:
+            return
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         if options.frozenIf:
             expr = self.sexpr if options.simplify else self.expr
@@ -133,6 +149,8 @@ class InfoNode(InternalNode):
             return InfoNode(value, parent, verb)
 
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+        if not self.printAttr.visible:
+            return
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         print(options.indentStr * indent + self.verb + ' ' + str(self.expr), file=options.file)
         if self.kids[0] is None:
