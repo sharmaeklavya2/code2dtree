@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
 import argparse
 from code2dtree import func2dtree, getVarList, printGraphViz
 from code2dtree.types import CompT
@@ -29,7 +28,7 @@ def main() -> None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
     else:
-        dtree.print(sys.stdout)
+        dtree.print()
 
 
 if __name__ == '__main__':

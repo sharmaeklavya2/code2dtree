@@ -2,7 +2,6 @@
 
 """Longest Processing Time (LPT) algorithm for makespan minimization."""
 
-import sys
 import argparse
 from collections.abc import Generator, Iterable, Sequence
 from typing import NamedTuple
@@ -58,7 +57,7 @@ def main() -> None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
     else:
-        dtree.print(sys.stdout)
+        dtree.print()
 
 
 if __name__ == '__main__':
