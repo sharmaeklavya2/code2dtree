@@ -121,6 +121,15 @@ class InfoNode(InternalNode):
         super().__init__(value, parent, 1)
         self.verb = verb
 
+    @classmethod
+    def get(cls, value: object, parent: Optional[InternalNode], verb: str) -> InfoNode:
+        if verb == YieldNode.defaultVerb:
+            return YieldNode(value, parent)
+        elif verb == CheckpointNode.defaultVerb:
+            return CheckpointNode(value, parent)
+        else:
+            return InfoNode(value, parent, verb)
+
     def print(self, fp: TextIO, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
         noneString = '  ' * (indent + 1) + '(unfinished)'
         print('  ' * indent + self.verb + ' ' + str(self.expr))
@@ -131,8 +140,17 @@ class InfoNode(InternalNode):
 
 
 class CheckpointNode(InfoNode):
+    defaultVerb = 'print:'
+
     def __init__(self, value: object, parent: Optional[InternalNode]):
-        super().__init__(value, parent, 'print:')
+        super().__init__(value, parent, CheckpointNode.defaultVerb)
+
+
+class YieldNode(InfoNode):
+    defaultVerb = 'yield'
+
+    def __init__(self, value: object, parent: Optional[InternalNode]):
+        super().__init__(value, parent, YieldNode.defaultVerb)
 
 
 def getLeaves(root: Optional[Node]) -> Iterable[LeafNode]:

@@ -1,10 +1,12 @@
 from __future__ import annotations
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from typing import Optional, TextIO, Union
 
 from .expr import Expr
 from .treeExplorer import TreeExplorer, CachedTreeExplorer
-from .node import Node, DecisionNode, InternalNode, IfNode, FrozenIfNode, CheckpointNode, ReturnNode
+from .node import Node, InternalNode, ReturnNode
+from .node import DecisionNode, IfNode, FrozenIfNode
+from .node import InfoNode, CheckpointNode, YieldNode
 
 
 class FuncArgs:
@@ -80,14 +82,12 @@ class RepeatedRunTreeGen:
             self.createAndGoDown(node, b if checkOther else 0)
             return b
 
-    def checkpoint(self, v: object, checkConsistency: bool) -> None:
+    def addInfo(self, v: object, verb: str) -> None:
         if self.current is not None:
-            assert isinstance(self.current, CheckpointNode)
-            if checkConsistency:
-                assert self.current.expr == v
+            assert isinstance(self.current, InfoNode) and self.current.verb == verb
             self.goDown(0)
         else:
-            node = CheckpointNode(v, self.parent)
+            node = InfoNode.get(v, self.parent, verb)
             self.createAndGoDown(node, 0)
 
     def reportEnd(self, expr: object) -> None:
@@ -119,6 +119,16 @@ class RepeatedRunTreeGen:
             self.reportEnd(result)
         Expr.globalTreeGen = None
 
+    def iterateOnce(self, gen: Generator[object, None, object]) -> None:
+        Expr.globalTreeGen = self
+        try:
+            while True:
+                yVal = next(gen)
+                self.addInfo(yVal, YieldNode.defaultVerb)
+        except StopIteration as e:
+            self.reportEnd(e.value)
+        Expr.globalTreeGen = None
+
 
 def func2dtree(func: Callable[..., object], funcArgs: Union[FuncArgs, Sequence[object]],
         treeExplorer: Optional[TreeExplorer] = None) -> Node:
@@ -134,9 +144,25 @@ def func2dtree(func: Callable[..., object], funcArgs: Union[FuncArgs, Sequence[o
     return gen.root
 
 
+def genFunc2dtree(func: Callable[..., Generator[object, None, object]], funcArgs: Union[FuncArgs, Sequence[object]],
+        treeExplorer: Optional[TreeExplorer] = None) -> Node:
+    if treeExplorer is None:
+        treeExplorer = CachedTreeExplorer()
+    if isinstance(funcArgs, FuncArgs):
+        fa = funcArgs
+    else:
+        fa = FuncArgs(*funcArgs)
+    treeGen = RepeatedRunTreeGen(treeExplorer)
+    while not treeGen.finished():
+        g = func(*(fa.args), **(fa.kwargs))
+        treeGen.iterateOnce(g)
+    assert treeGen.root is not None
+    return treeGen.root
+
+
 def checkpoint(v: object, checkConsistency: bool = False, fp: Optional[TextIO] = None) -> None:
     if Expr.globalTreeGen is None:
         if fp is not None:
             print(v, file=fp)
     else:
-        Expr.globalTreeGen.checkpoint(v, checkConsistency)
+        Expr.globalTreeGen.addInfo(v, CheckpointNode.defaultVerb)

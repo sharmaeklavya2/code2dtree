@@ -4,13 +4,14 @@
 
 import sys
 import argparse
-from code2dtree import checkpoint, func2dtree, getVarList, printGraphViz
+from collections.abc import Generator, Sequence
+from typing import NamedTuple
+from code2dtree import Expr, genFunc2dtree, getVarList, printGraphViz
 from code2dtree.linExpr import LinConstrTreeExplorer
-from collections.abc import Sequence
 from code2dtree.types import Real
 
 
-def argmin(x: Sequence[Real]) -> int:
+def argmin(x: Sequence[Real | Expr]) -> int:
     """Largest index of minimum value in non-empty list."""
     n = len(x)
     minIndex, minValue = 0, x[0]
@@ -20,20 +21,27 @@ def argmin(x: Sequence[Real]) -> int:
     return minIndex
 
 
-def greedy(x: Sequence[Real], m: int) -> Sequence[int]:
+class AssnEvent(NamedTuple):
+    job: int
+    machine: int
+
+
+def greedy(x: Sequence[Real | Expr], m: int) -> Generator[AssnEvent, None, Sequence[int]]:
     """Jobs have sizes x. There are m machines."""
     n = len(x)
     if n <= m:
+        for j in range(n):
+            yield AssnEvent(job=j, machine=j)
         return list(range(n))
     assn = list(range(m))
     loads = list(x[:m])
     for j in range(m):
-        checkpoint(f'job {j} -> machine {j}')
+        yield AssnEvent(job=j, machine=j)
     for j in range(m, n):
         i = argmin(loads)
         assn.append(i)
         loads[i] += x[j]
-        checkpoint(f'job {j} -> machine {i}')
+        yield AssnEvent(job=j, machine=i)
     return assn
 
 
@@ -47,7 +55,7 @@ def main() -> None:
     print('n={n} jobs, m={m} machines'.format(n=args.n, m=args.m))
     x = getVarList('x', args.n, False)
     te = LinConstrTreeExplorer([x[i-1] >= x[i] for i in range(1, args.n)])
-    dtree = func2dtree(greedy, (x, args.m), te)
+    dtree = genFunc2dtree(greedy, (x, args.m), te)
     if args.output is not None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)

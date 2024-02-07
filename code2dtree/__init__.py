@@ -13,6 +13,6 @@ __all__ = [
     'IfNode', 'FrozenIfNode', 'CheckpointNode',
     'PrintOptions', 'printGraphViz', 'getLeaves',
     'TreeExplorer', 'CachedTreeExplorer',
-    'func2dtree', 'FuncArgs', 'checkpoint',
+    'func2dtree', 'genFunc2dtree', 'FuncArgs', 'checkpoint',
     ]
 # from .linExpr import *  # noqa
