@@ -1,7 +1,7 @@
 from __future__ import annotations
 import sys
 from dataclasses import dataclass
-from collections.abc import Iterable, MutableSequence
+from collections.abc import Iterable, MutableSequence, Sequence
 from typing import Optional, TextIO, NamedTuple
 
 from .expr import Expr, prettyExprRepr
@@ -41,6 +41,9 @@ class LeafNode(Node):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
         super().__init__(expr, parent, True)
 
+    def getKids(self) -> Sequence[None]:
+        return ()
+
 
 class ReturnNode(LeafNode):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
@@ -66,6 +69,9 @@ class InternalNode(Node):
     def __init__(self, expr: object, parent: Optional[InternalNode], nKids: int):
         super().__init__(expr, parent, False)
         self.kids: MutableSequence[Optional[Node]] = [None] * nKids
+
+    def getKids(self) -> Sequence[Optional[Node]]:
+        return self.kids
 
     def getKidsExploreStatus(self) -> tuple[int, int]:
         nEKids, nKids = 0, 0
