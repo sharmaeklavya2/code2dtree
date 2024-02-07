@@ -29,14 +29,13 @@ class AssnEvent(NamedTuple):
 def greedy(x: Sequence[Real | Expr], m: int) -> Generator[AssnEvent, None, Sequence[int]]:
     """Jobs have sizes x. There are m machines."""
     n = len(x)
-    if n <= m:
-        for j in range(n):
-            yield AssnEvent(job=j, machine=j)
-        return list(range(n))
-    assn = list(range(m))
-    loads = list(x[:m])
-    for j in range(m):
+    minMN = min(m, n)
+    assn = list(range(minMN))
+    for j in range(minMN):
         yield AssnEvent(job=j, machine=j)
+    if n <= m:
+        return assn
+    loads = list(x[:m])
     for j in range(m, n):
         i = argmin(loads)
         assn.append(i)
