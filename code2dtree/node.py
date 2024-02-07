@@ -9,6 +9,7 @@ from .expr import Expr, prettyExprRepr
 class PrintOptions(NamedTuple):
     simplify: bool = False
     frozenIf: bool = True
+    indentStr: str = '  '
 
 
 DEFAULT_PO = PrintOptions()
@@ -37,7 +38,7 @@ class ReturnNode(LeafNode):
         super().__init__(expr, parent)
 
     def print(self, fp: TextIO, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
-        print('  ' * indent + 'return ' + prettyExprRepr(self.expr), file=fp)
+        print(options.indentStr * indent + 'return ' + prettyExprRepr(self.expr), file=fp)
 
 
 class NothingNode(LeafNode):
@@ -45,7 +46,7 @@ class NothingNode(LeafNode):
         super().__init__(None, parent)
 
     def print(self, fp: TextIO, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
-        print('  ' * indent + '(nothing)')
+        print(options.indentStr * indent + '(nothing)')
 
 
 class InternalNode(Node):
@@ -85,14 +86,14 @@ class IfNode(DecisionNode):
         super().__init__(expr, parent, 2)
 
     def print(self, fp: TextIO, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
-        noneString = '  ' * (indent + 1) + '(unfinished)'
+        noneString = options.indentStr * (indent + 1) + '(unfinished)'
         expr = self.sexpr if options.simplify else self.expr
-        print('  ' * indent + 'if ' + prettyExprRepr(expr) + ':', file=fp)
+        print(options.indentStr * indent + 'if ' + prettyExprRepr(expr) + ':', file=fp)
         if self.kids[1] is None:
             print(noneString, file=fp)
         else:
             self.kids[1].print(fp, indent+1, options)
-        print('  ' * indent + 'else:')
+        print(options.indentStr * indent + 'else:')
         if self.kids[0] is None:
             print(noneString, file=fp)
         else:
@@ -105,10 +106,10 @@ class FrozenIfNode(DecisionNode):
         self.b = b
 
     def print(self, fp: TextIO, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
-        noneString = '  ' * (indent + 1) + '(unfinished)'
+        noneString = options.indentStr * (indent + 1) + '(unfinished)'
         if options.frozenIf:
             expr = self.sexpr if options.simplify else self.expr
-            print('  ' * indent + 'assert ' + ('' if self.b else 'not(') +
+            print(options.indentStr * indent + 'assert ' + ('' if self.b else 'not(') +
                 prettyExprRepr(expr) + ('' if self.b else ')'))
         if self.kids[0] is None:
             print(noneString, file=fp)
@@ -131,8 +132,8 @@ class InfoNode(InternalNode):
             return InfoNode(value, parent, verb)
 
     def print(self, fp: TextIO, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
-        noneString = '  ' * (indent + 1) + '(unfinished)'
-        print('  ' * indent + self.verb + ' ' + str(self.expr))
+        noneString = options.indentStr * (indent + 1) + '(unfinished)'
+        print(options.indentStr * indent + self.verb + ' ' + str(self.expr))
         if self.kids[0] is None:
             print(noneString, file=fp)
         else:
