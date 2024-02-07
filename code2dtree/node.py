@@ -25,7 +25,7 @@ class Node:
     def __repr__(self) -> str:
         return '{}({}, exp={})'.format(self.__class__.__name__, self.expr, self.explored)
 
-    def print(self, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         raise NotImplementedError()
 
 
@@ -38,7 +38,7 @@ class ReturnNode(LeafNode):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
         super().__init__(expr, parent)
 
-    def print(self, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         print(options.indentStr * indent + 'return ' + prettyExprRepr(self.expr), file=options.file)
 
 
@@ -46,7 +46,7 @@ class NothingNode(LeafNode):
     def __init__(self, parent: Optional[InternalNode]):
         super().__init__(None, parent)
 
-    def print(self, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         print(options.indentStr * indent + '(nothing)', file=options.file)
 
 
@@ -86,19 +86,19 @@ class IfNode(DecisionNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode]):
         super().__init__(expr, parent, 2)
 
-    def print(self, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         expr = self.sexpr if options.simplify else self.expr
         print(options.indentStr * indent + 'if ' + prettyExprRepr(expr) + ':', file=options.file)
         if self.kids[1] is None:
             print(noneString, file=options.file)
         else:
-            self.kids[1].print(indent+1, options)
+            self.kids[1].print(options, indent+1)
         print(options.indentStr * indent + 'else:', file=options.file)
         if self.kids[0] is None:
             print(noneString, file=options.file)
         else:
-            self.kids[0].print(indent+1, options)
+            self.kids[0].print(options, indent+1)
 
 
 class FrozenIfNode(DecisionNode):
@@ -106,7 +106,7 @@ class FrozenIfNode(DecisionNode):
         super().__init__(expr, parent, 1)
         self.b = b
 
-    def print(self, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         if options.frozenIf:
             expr = self.sexpr if options.simplify else self.expr
@@ -115,7 +115,7 @@ class FrozenIfNode(DecisionNode):
         if self.kids[0] is None:
             print(noneString, file=options.file)
         else:
-            self.kids[0].print(indent, options)
+            self.kids[0].print(options, indent)
 
 
 class InfoNode(InternalNode):
@@ -132,13 +132,13 @@ class InfoNode(InternalNode):
         else:
             return InfoNode(value, parent, verb)
 
-    def print(self, indent: int = 0, options: PrintOptions = DEFAULT_PO) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         print(options.indentStr * indent + self.verb + ' ' + str(self.expr), file=options.file)
         if self.kids[0] is None:
             print(noneString, file=options.file)
         else:
-            self.kids[0].print(indent, options)
+            self.kids[0].print(options, indent)
 
 
 class CheckpointNode(InfoNode):
