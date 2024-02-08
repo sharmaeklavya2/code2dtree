@@ -5,6 +5,7 @@ from collections.abc import Iterable, MutableSequence, Sequence
 from typing import Any, Optional, TextIO, NamedTuple
 
 from .expr import Expr, prettyExprRepr
+from .terminal import termPrint, TermOptions
 
 
 class PrintOptions(NamedTuple):
@@ -17,6 +18,7 @@ class PrintOptions(NamedTuple):
 @dataclass
 class PrintAttr:
     visible: bool = True
+    termOpts: Optional[TermOptions] = None
 
 
 DEFAULT_PO = PrintOptions()
@@ -53,7 +55,8 @@ class ReturnNode(LeafNode):
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         if not self.printAttr.visible:
             return
-        print(options.indentStr * indent + 'return ' + prettyExprRepr(self.expr), file=options.file)
+        termPrint(options.indentStr * indent + 'return ' + prettyExprRepr(self.expr),
+            options=self.printAttr.termOpts, file=options.file)
 
 
 class NothingNode(LeafNode):
@@ -63,7 +66,8 @@ class NothingNode(LeafNode):
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         if not self.printAttr.visible:
             return
-        print(options.indentStr * indent + '(nothing)', file=options.file)
+        termPrint(options.indentStr * indent + '(nothing)',
+            options=self.printAttr.termOpts, file=options.file)
 
 
 class InternalNode(Node):
@@ -111,20 +115,22 @@ class IfNode(DecisionNode):
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         passString = options.indentStr * (indent + 1) + 'pass'
         expr = self.sexpr if options.simplify else self.expr
-        print(options.indentStr * indent + 'if ' + prettyExprRepr(expr) + ':', file=options.file)
+        termPrint(options.indentStr * indent + 'if ' + prettyExprRepr(expr) + ':',
+            options=self.printAttr.termOpts, file=options.file)
         if self.kids[1] is None:
-            print(noneString, file=options.file)
+            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
         elif self.kids[1].printAttr.visible:
             self.kids[1].print(options, indent+1)
         else:
-            print(passString, file=options.file)
-        print(options.indentStr * indent + 'else:', file=options.file)
+            termPrint(passString, options=self.printAttr.termOpts, file=options.file)
+        termPrint(options.indentStr * indent + 'else:',
+            options=self.printAttr.termOpts, file=options.file)
         if self.kids[0] is None:
-            print(noneString, file=options.file)
+            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
         elif self.kids[0].printAttr.visible:
             self.kids[0].print(options, indent+1)
         else:
-            print(passString, file=options.file)
+            termPrint(passString, options=self.printAttr.termOpts, file=options.file)
 
 
 class FrozenIfNode(DecisionNode):
@@ -138,10 +144,11 @@ class FrozenIfNode(DecisionNode):
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         if options.frozenIf:
             expr = self.sexpr if options.simplify else self.expr
-            print(options.indentStr * indent + 'assert ' + ('' if self.b else 'not(') +
-                prettyExprRepr(expr) + ('' if self.b else ')'), file=options.file)
+            termPrint(options.indentStr * indent + 'assert ' + ('' if self.b else 'not(') +
+                prettyExprRepr(expr) + ('' if self.b else ')'),
+                options=self.printAttr.termOpts, file=options.file)
         if self.kids[0] is None:
-            print(noneString, file=options.file)
+            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
         else:
             self.kids[0].print(options, indent)
 
@@ -163,9 +170,10 @@ class InfoNode(InternalNode):
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
         if self.printAttr.visible:
-            print(options.indentStr * indent + self.verb + ' ' + str(self.expr), file=options.file)
+            termPrint(options.indentStr * indent + self.verb + ' ' + str(self.expr),
+                options=self.printAttr.termOpts, file=options.file)
         if self.kids[0] is None:
-            print(noneString, file=options.file)
+            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
         else:
             self.kids[0].print(options, indent)
 
