@@ -2,7 +2,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from collections.abc import Iterable, MutableSequence, Sequence
-from typing import Optional, TextIO, NamedTuple
+from typing import Any, Optional, TextIO, NamedTuple
 
 from .expr import Expr, prettyExprRepr
 
@@ -28,6 +28,7 @@ class Node:
         self.parent = parent
         self.explored = explored
         self.printAttr: PrintAttr = PrintAttr()
+        self.userData: dict[Any, Any] = {}
 
     def __repr__(self) -> str:
         return '{}({}, exp={})'.format(self.__class__.__name__, self.expr, self.explored)
