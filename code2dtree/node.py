@@ -109,17 +109,22 @@ class IfNode(DecisionNode):
         if not self.printAttr.visible:
             return
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
+        passString = options.indentStr * (indent + 1) + 'pass'
         expr = self.sexpr if options.simplify else self.expr
         print(options.indentStr * indent + 'if ' + prettyExprRepr(expr) + ':', file=options.file)
         if self.kids[1] is None:
             print(noneString, file=options.file)
-        else:
+        elif self.kids[1].printAttr.visible:
             self.kids[1].print(options, indent+1)
+        else:
+            print(passString, file=options.file)
         print(options.indentStr * indent + 'else:', file=options.file)
         if self.kids[0] is None:
             print(noneString, file=options.file)
-        else:
+        elif self.kids[0].printAttr.visible:
             self.kids[0].print(options, indent+1)
+        else:
+            print(passString, file=options.file)
 
 
 class FrozenIfNode(DecisionNode):
@@ -156,10 +161,9 @@ class InfoNode(InternalNode):
             return InfoNode(value, parent, verb)
 
     def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
-        if not self.printAttr.visible:
-            return
         noneString = options.indentStr * (indent + 1) + '(unfinished)'
-        print(options.indentStr * indent + self.verb + ' ' + str(self.expr), file=options.file)
+        if self.printAttr.visible:
+            print(options.indentStr * indent + self.verb + ' ' + str(self.expr), file=options.file)
         if self.kids[0] is None:
             print(noneString, file=options.file)
         else:
