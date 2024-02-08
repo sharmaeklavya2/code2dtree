@@ -65,6 +65,21 @@ class Node:
         if self.printAttr.visible:
             raise NotImplementedError()
 
+    def getKids(self) -> Sequence[Optional[Node]]:
+        raise NotImplementedError()
+
+    def goDown(self, path: Iterable[int]) -> Optional[Node]:
+        node: Optional[Node] = self
+        for index in path:
+            if node is None:
+                raise IndexError('cannot index None')
+            kids = node.getKids()
+            if len(kids) <= index:
+                raise IndexError(f'not enough kids at {node}')
+            else:
+                node = kids[index]
+        return node
+
 
 class LeafNode(Node):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
