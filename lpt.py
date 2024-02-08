@@ -5,7 +5,7 @@
 import argparse
 from collections.abc import Generator, Iterable, Sequence
 from typing import NamedTuple
-from code2dtree import Expr, genFunc2dtree, getVarList, printGraphViz
+from code2dtree import Expr, genFunc2dtree, getVarList, printGraphViz, PrintOptions
 from code2dtree.linExpr import LinConstrTreeExplorer
 from code2dtree.types import Real
 
@@ -57,7 +57,8 @@ def main() -> None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
     else:
-        dtree.print()
+        options = PrintOptions(lineNoCols=4)
+        dtree.print(options)
 
 
 if __name__ == '__main__':

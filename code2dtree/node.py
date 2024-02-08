@@ -13,18 +13,44 @@ class PrintOptions(NamedTuple):
     frozenIf: bool = True
     indentStr: str = '  '
     file: TextIO = sys.stdout
+    lineNoCols: int = 0
+    marginCols: int = 0
+
+
+@dataclass
+class PrintStatus:
+    nodes: int = 0
+    leaves: int = 0
+    lines: int = 0
+    indent: int = 0
 
 
 @dataclass
 class PrintAttr:
     visible: bool = True
+    margin: str = ''
     termOpts: Optional[TermOptions] = None
 
 
 DEFAULT_PO = PrintOptions()
 
 
+def getPrefix(attr: PrintAttr, options: PrintOptions, status: PrintStatus) -> str:
+    parts = []
+    if options.lineNoCols:
+        parts.append(str(status.lines).rjust(options.lineNoCols))
+        parts.append('|')
+    if options.marginCols:
+        parts.append(attr.margin.rjust(options.marginCols))
+        parts.append('|')
+    parts.append(status.indent * options.indentStr)
+    return ''.join(parts)
+
+
 class Node:
+    noneString = '(unfinished)'
+    passString = 'pass'
+
     def __init__(self, expr: object, parent: Optional[InternalNode], explored: bool):
         self.expr = expr
         self.parent = parent
@@ -35,7 +61,7 @@ class Node:
     def __repr__(self) -> str:
         return '{}({}, exp={})'.format(self.__class__.__name__, self.expr, self.explored)
 
-    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if self.printAttr.visible:
             raise NotImplementedError()
 
@@ -52,22 +78,16 @@ class ReturnNode(LeafNode):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
         super().__init__(expr, parent)
 
-    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if not self.printAttr.visible:
             return
-        termPrint(options.indentStr * indent + 'return ' + prettyExprRepr(self.expr),
+        if status is None:
+            status = PrintStatus()
+        termPrint(getPrefix(self.printAttr, options, status) + 'return ' + prettyExprRepr(self.expr),
             options=self.printAttr.termOpts, file=options.file)
-
-
-class NothingNode(LeafNode):
-    def __init__(self, parent: Optional[InternalNode]):
-        super().__init__(None, parent)
-
-    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
-        if not self.printAttr.visible:
-            return
-        termPrint(options.indentStr * indent + '(nothing)',
-            options=self.printAttr.termOpts, file=options.file)
+        status.leaves += 1
+        status.nodes += 1
+        status.lines += 1
 
 
 class InternalNode(Node):
@@ -109,28 +129,43 @@ class IfNode(DecisionNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode]):
         super().__init__(expr, parent, 2)
 
-    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if not self.printAttr.visible:
             return
-        noneString = options.indentStr * (indent + 1) + '(unfinished)'
-        passString = options.indentStr * (indent + 1) + 'pass'
+        if status is None:
+            status = PrintStatus()
         expr = self.sexpr if options.simplify else self.expr
-        termPrint(options.indentStr * indent + 'if ' + prettyExprRepr(expr) + ':',
+        termPrint(getPrefix(self.printAttr, options, status) + 'if ' + prettyExprRepr(expr) + ':',
             options=self.printAttr.termOpts, file=options.file)
+        status.lines += 1
+        status.nodes += 1
+        status.indent += 1
         if self.kids[1] is None:
-            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
+            termPrint(getPrefix(self.printAttr, options, status) + Node.noneString,
+                options=self.printAttr.termOpts, file=options.file)
+            status.lines += 1
         elif self.kids[1].printAttr.visible:
-            self.kids[1].print(options, indent+1)
+            self.kids[1].print(options, status)
         else:
-            termPrint(passString, options=self.printAttr.termOpts, file=options.file)
-        termPrint(options.indentStr * indent + 'else:',
+            termPrint(getPrefix(self.printAttr, options, status) + Node.passString,
+                options=self.printAttr.termOpts, file=options.file)
+            status.lines += 1
+        status.indent -= 1
+        termPrint(getPrefix(self.printAttr, options, status) + 'else:',
             options=self.printAttr.termOpts, file=options.file)
+        status.lines += 1
+        status.indent += 1
         if self.kids[0] is None:
-            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
+            termPrint(getPrefix(self.printAttr, options, status) + Node.noneString,
+                options=self.printAttr.termOpts, file=options.file)
+            status.lines += 1
         elif self.kids[0].printAttr.visible:
-            self.kids[0].print(options, indent+1)
+            self.kids[0].print(options, status)
         else:
-            termPrint(passString, options=self.printAttr.termOpts, file=options.file)
+            termPrint(getPrefix(self.printAttr, options, status) + Node.passString,
+                options=self.printAttr.termOpts, file=options.file)
+            status.lines += 1
+        status.indent -= 1
 
 
 class FrozenIfNode(DecisionNode):
@@ -138,19 +173,26 @@ class FrozenIfNode(DecisionNode):
         super().__init__(expr, parent, 1)
         self.b = b
 
-    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
+    def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if not self.printAttr.visible:
             return
-        noneString = options.indentStr * (indent + 1) + '(unfinished)'
-        if options.frozenIf:
+        if status is None:
+            status = PrintStatus()
+        if options.frozenIf or self.kids[0] is None:
             expr = self.sexpr if options.simplify else self.expr
-            termPrint(options.indentStr * indent + 'assert ' + ('' if self.b else 'not(') +
-                prettyExprRepr(expr) + ('' if self.b else ')'),
+            termPrint(getPrefix(self.printAttr, options, status)
+                + ('assert' if self.kids[0] is not None else 'asserting'),
+                ('' if self.b else 'not(') + prettyExprRepr(expr) + ('' if self.b else ')'),
                 options=self.printAttr.termOpts, file=options.file)
+            status.nodes += 1
+            status.lines += 1
         if self.kids[0] is None:
-            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
+            status.indent += 1
+            termPrint(Node.noneString, options=self.printAttr.termOpts, file=options.file)
+            status.lines += 1
+            status.indent -= 1
         else:
-            self.kids[0].print(options, indent)
+            self.kids[0].print(options, status)
 
 
 class InfoNode(InternalNode):
@@ -167,15 +209,20 @@ class InfoNode(InternalNode):
         else:
             return InfoNode(value, parent, verb)
 
-    def print(self, options: PrintOptions = DEFAULT_PO, indent: int = 0) -> None:
-        noneString = options.indentStr * (indent + 1) + '(unfinished)'
+    def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
+        if status is None:
+            status = PrintStatus()
         if self.printAttr.visible:
-            termPrint(options.indentStr * indent + self.verb + ' ' + str(self.expr),
-                options=self.printAttr.termOpts, file=options.file)
+            termPrint(getPrefix(self.printAttr, options, status) + self.verb,
+                str(self.expr), options=self.printAttr.termOpts, file=options.file)
+            status.nodes += 1
+            status.lines += 1
         if self.kids[0] is None:
-            termPrint(noneString, options=self.printAttr.termOpts, file=options.file)
+            termPrint(getPrefix(self.printAttr, options, status) + Node.noneString,
+                options=self.printAttr.termOpts, file=options.file)
+            status.lines += 1
         else:
-            self.kids[0].print(options, indent)
+            self.kids[0].print(options, status)
 
 
 class CheckpointNode(InfoNode):
