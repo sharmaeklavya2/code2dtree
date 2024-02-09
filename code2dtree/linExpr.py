@@ -114,7 +114,7 @@ def displayLinExprHelper(coeffs: Iterable[tuple[object, Real]], lineParts: list[
 class LinCmpExpr(Expr):
     def __init__(self, coeffMap: Mapping[object, Real], op: str, rhs: Real):
         self.coeffMap = coeffMap
-        self.frozenCoeffMap = frozenset(coeffMap.items())
+        self.frozenCoeffMap: Optional[ORSet] = None
         self.op = op
         self.rhs = rhs
 
@@ -123,6 +123,8 @@ class LinCmpExpr(Expr):
             repr(self.op), repr(self.rhs))
 
     def key(self) -> object:
+        if self.frozenCoeffMap is None:
+            self.frozenCoeffMap = frozenset(self.coeffMap.items())
         return (self.__class__.__name__, self.frozenCoeffMap, self.op, self.rhs)
 
     def __str__(self) -> str:
