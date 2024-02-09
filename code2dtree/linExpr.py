@@ -1,6 +1,8 @@
 from __future__ import annotations
+from enum import StrEnum
 from collections.abc import Iterable, Mapping, Sequence, Set
 from typing import Optional, TextIO, TypeVar
+
 from .expr import Var, Expr, BinExpr, UnExpr
 from .aggExpr import AggExpr
 from .treeExplorer import TreeExplorer
@@ -135,9 +137,39 @@ class LinCmpExpr(Expr):
         return '(' + ' '.join(lineParts) + ')'
 
 
-def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
+class IneqMode(StrEnum):
+    exact = 'exact'
+    strict = 'strict'
+    lenient = 'lenient'
+
+
+CONVERT_OP = {
+    ('≤', IneqMode.strict): '<',
+    ('<', IneqMode.strict): '<',
+    ('≥', IneqMode.strict): '>',
+    ('>', IneqMode.strict): '>',
+    ('<', IneqMode.lenient): '≤',
+    ('≤', IneqMode.lenient): '≤',
+    ('>', IneqMode.lenient): '≥',
+    ('≥', IneqMode.lenient): '≥',
+    ('==', IneqMode.lenient): '==',
+}
+
+
+def convertOp(op: str, ineqMode: IneqMode) -> str:
+    if ineqMode == IneqMode.exact:
+        return op
+    else:
+        return CONVERT_OP[(op, ineqMode)]
+
+
+def parseLinCmpExpr(expr: Expr, ineqMode: IneqMode) -> LinCmpExpr:
     if isinstance(expr, LinCmpExpr):
-        return expr
+        newOp = convertOp(expr.op, ineqMode)
+        if newOp == expr.op:
+            return expr
+        else:
+            return LinCmpExpr(expr.coeffMap, newOp, expr.rhs)
     elif isinstance(expr, BinExpr) and expr.op in FLIP_OP.keys():
         coeffDict: dict[object, Real] = {}
         rhs = - (parseAffineHelper(expr.larg, 1, coeffDict)
@@ -147,10 +179,9 @@ def parseLinCmpExpr(expr: Expr) -> LinCmpExpr:
             del coeffDict[k]
         coeffMap, flip = canonicalizeDict(coeffDict)
         del coeffDict
+        op = convertOp(expr.op, ineqMode)
         if flip:
-            op, rhs = FLIP_OP[expr.op], -rhs
-        else:
-            op = expr.op
+            op, rhs = FLIP_OP[op], -rhs
         return LinCmpExpr(coeffMap, op, rhs)
     else:
         raise ValueError('expected BinExpr with comparison operator')
@@ -172,16 +203,18 @@ def evalOp(larg: Real, op: str, rarg: Real) -> bool:
         return larg >= rarg
     elif op == '≤':
         return larg <= rarg
+    elif op == '==':
+        return larg == rarg
     else:
         raise ValueError('invalid operator ' + op)
 
 
-def addConstrToDict(expr: Expr | bool, b: bool, d: ConstrDict) -> None:
+def addConstrToDict(expr: Expr | bool, b: bool, d: ConstrDict, ineqMode: IneqMode) -> None:
     if isinstance(expr, bool):
         if expr != b:
             raise Exception("Entering impossible scenario.")
         return
-    linExpr = parseLinCmpExpr(expr)
+    linExpr = parseLinCmpExpr(expr, ineqMode)
     coeffDict, op, rhs = linExpr.coeffMap, linExpr.op, linExpr.rhs
     if not coeffDict:
         exprValue = evalOp(0, op, rhs)
@@ -189,7 +222,7 @@ def addConstrToDict(expr: Expr | bool, b: bool, d: ConstrDict) -> None:
             raise Exception("Entering impossible scenario.")
         return
     if not b:
-        op = NEG_OP[op]
+        op = convertOp(NEG_OP[op], ineqMode)
     coeffs = frozenset(coeffDict.items())
     oldInt = d.get(coeffs)
     newInt = opToInterval(op, rhs)
@@ -213,25 +246,28 @@ def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
 
 
 class LinConstrTreeExplorer(TreeExplorer):
-    def __init__(self, baseConstraintsList: Sequence[Expr | bool] = ()) -> None:
+    def __init__(self, baseConstraintsList: Sequence[Expr | bool] = (),
+            ineqMode: IneqMode = IneqMode.exact) -> None:
         super().__init__()
         self.baseConstraintsDict: ConstrDict = {}
+        self.ineqMode = ineqMode
         for expr in baseConstraintsList:
-            addConstrToDict(expr, True, self.baseConstraintsDict)
+            addConstrToDict(expr, True, self.baseConstraintsDict, ineqMode)
         self.constraints: ConstrDict = dict(self.baseConstraintsDict)
 
     def noteIf(self, expr: Expr, b: bool) -> None:
-        addConstrToDict(expr, b, self.constraints)
+        addConstrToDict(expr, b, self.constraints, self.ineqMode)
 
     def decideIf(self, expr: Expr) -> tuple[bool, bool, Optional[Expr]]:
-        linExpr = parseLinCmpExpr(expr)
+        linExpr = parseLinCmpExpr(expr, self.ineqMode)
         coeffDict, op, rhs = linExpr.coeffMap, linExpr.op, linExpr.rhs
         if not coeffDict:
             exprValue = evalOp(0, op, rhs)
             return (exprValue, False, linExpr)
         coeffs = frozenset(coeffDict.items())
         oldInt = self.constraints.get(coeffs)
-        falseInt, trueInt = opToInterval(NEG_OP[op], rhs), opToInterval(op, rhs)
+        falseInt = opToInterval(convertOp(NEG_OP[op], self.ineqMode), rhs)
+        trueInt = opToInterval(op, rhs)
         if oldInt is None:
             self.constraints[coeffs] = falseInt
             return (False, True, linExpr)

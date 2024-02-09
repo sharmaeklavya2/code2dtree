@@ -5,7 +5,7 @@ import unittest
 from code2dtree import Var, BinExpr
 from code2dtree.interval import Interval
 from code2dtree.linExpr import parseLinCmpExpr, LinCmpExpr
-from code2dtree.linExpr import addConstrToDict, ConstrDict, LinConstrTreeExplorer
+from code2dtree.linExpr import addConstrToDict, ConstrDict, LinConstrTreeExplorer, IneqMode
 from code2dtree.linExpr import displayConstraints  # noqa
 
 
@@ -58,9 +58,9 @@ class ConstrAddTest(unittest.TestCase):
     def testOpposite(self) -> None:
         constraints: ConstrDict = {}
         x, y = Var.get('x'), Var.get('y')
-        addConstrToDict(x - y >= 2, True, constraints)
-        addConstrToDict(x - y <= 2, True, constraints)
-        addConstrToDict(y - x <= -1, True, constraints)
+        addConstrToDict(x - y >= 2, True, constraints, IneqMode.exact)
+        addConstrToDict(x - y <= 2, True, constraints, IneqMode.exact)
+        addConstrToDict(y - x <= -1, True, constraints, IneqMode.exact)
         self.assertEqual(len(constraints), 1)
         ((coeffs, interval),) = list(constraints.items())
         self.assertEqual({k for k, v in coeffs}, {'x', 'y'})
@@ -70,9 +70,24 @@ class ConstrAddTest(unittest.TestCase):
     def testEmpty(self) -> None:
         constraints: ConstrDict = {}
         x = Var.get('x')
-        addConstrToDict(x >= x, True, constraints)
-        addConstrToDict(True, True, constraints)
+        addConstrToDict(x >= x, True, constraints, IneqMode.exact)
+        addConstrToDict(True, True, constraints, IneqMode.exact)
         self.assertEqual(constraints, {})
+
+    def testModes(self) -> None:
+        constraints: ConstrDict = {}
+        x, y = Var.get('x'), Var.get('y')
+
+        addConstrToDict(x > 2, True, constraints, IneqMode.lenient)
+        addConstrToDict(x < 2, True, constraints, IneqMode.lenient)
+        (interval,) = list(constraints.values())
+        self.assertEqual(interval, Interval.fromStr('[2,2]'))
+
+        constraints.clear()
+        addConstrToDict(y >= 2, True, constraints, IneqMode.strict)
+        addConstrToDict(y < 3, True, constraints, IneqMode.strict)
+        (interval,) = list(constraints.values())
+        self.assertEqual(interval, Interval.fromStr('(2,3)'))
 
 
 class ConstrDecideTest(unittest.TestCase):
@@ -94,7 +109,7 @@ class ConstrDecideTest(unittest.TestCase):
 class LinCmpExprTest(unittest.TestCase):
     def testStr(self) -> None:
         x, y = Var.get('x'), Var.get('y')
-        expr1 = parseLinCmpExpr(x - 2 * y >= 3)
+        expr1 = parseLinCmpExpr(x - 2 * y >= 3, IneqMode.exact)
         expr2 = LinCmpExpr({'x': 1, 'y': -2, 'z': 0}, '≥', 3)
         s = '(x - 2 * y ≥ 3)'
         self.assertEqual(str(expr1), s)
