@@ -2,7 +2,7 @@
 
 import sys  # noqa
 import unittest
-from code2dtree import Var, BinExpr
+from code2dtree.expr import Var, BinExpr
 from code2dtree.interval import Interval
 from code2dtree.linExpr import parseLinCmpExpr, LinCmpExpr
 from code2dtree.linExpr import addConstrToDict, ConstrDict, LinConstrTreeExplorer, IneqMode

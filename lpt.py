@@ -5,7 +5,8 @@
 import argparse
 from collections.abc import Generator, Iterable, Sequence
 from typing import NamedTuple
-from code2dtree import Expr, genFunc2dtree, getVarList, printGraphViz, PrintOptions
+from code2dtree import Expr, genFunc2dtree, getVarList
+from code2dtree.node import printGraphViz, PrintOptions
 from code2dtree.linExpr import LinConstrTreeExplorer
 from code2dtree.types import Real
 

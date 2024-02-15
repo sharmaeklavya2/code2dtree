@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-from code2dtree import func2dtree, getVarList, printGraphViz
+from code2dtree import func2dtree, getVarList
+from code2dtree.node import printGraphViz
 from code2dtree.types import CompT
 
 
