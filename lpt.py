@@ -6,7 +6,7 @@ import argparse
 from collections.abc import Generator, Iterable, Sequence
 from typing import NamedTuple
 from code2dtree import Expr, genFunc2dtree, getVarList
-from code2dtree.node import printGraphViz, PrintOptions
+from code2dtree.node import printGraphViz, PrintOptions, PrintStatus
 from code2dtree.linExpr import LinConstrTreeExplorer
 from code2dtree.types import Real
 
@@ -48,6 +48,8 @@ def main() -> None:
     parser.add_argument('n', type=int, help='number of jobs')
     parser.add_argument('m', type=int, help='number of machines')
     parser.add_argument('-o', '--output', help='path to dot output file')
+    parser.add_argument('--lineNo', action='store_true', default=False,
+        help='display line numbers')
     args = parser.parse_args()
 
     print('n={n} jobs, m={m} machines'.format(n=args.n, m=args.m))
@@ -58,8 +60,11 @@ def main() -> None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
     else:
-        options = PrintOptions(lineNoCols=4)
-        dtree.print(options)
+        lineNoCols = 4 if args.lineNo else 0
+        options = PrintOptions(lineNoCols=lineNoCols)
+        status = PrintStatus()
+        dtree.print(options, status)
+        print(f'\nnodes: {status.nodes}, leaves: {status.leaves}, lines={status.lines}')
 
 
 if __name__ == '__main__':
