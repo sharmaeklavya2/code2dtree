@@ -68,6 +68,9 @@ class Node:
     def getKids(self) -> Sequence[Optional[Node]]:
         raise NotImplementedError()
 
+    def getLeaves(self) -> Iterable[LeafNode]:
+        raise NotImplementedError()
+
     def goDown(self, path: Iterable[int]) -> Optional[Node]:
         node: Optional[Node] = self
         for index in path:
@@ -87,6 +90,9 @@ class LeafNode(Node):
 
     def getKids(self) -> Sequence[None]:
         return ()
+
+    def getLeaves(self) -> Iterable[LeafNode]:
+        yield self
 
 
 class ReturnNode(LeafNode):
@@ -112,6 +118,13 @@ class InternalNode(Node):
 
     def getKids(self) -> Sequence[Optional[Node]]:
         return self.kids
+
+    def getLeaves(self) -> Iterable[LeafNode]:
+        for kid in self.kids:
+            if kid is None:
+                print('getLeaves: found None node', file=sys.stderr)
+            else:
+                yield from kid.getLeaves()
 
     def getKidsExploreStatus(self) -> tuple[int, int]:
         nEKids, nKids = 0, 0
@@ -252,18 +265,6 @@ class YieldNode(InfoNode):
 
     def __init__(self, value: object, parent: Optional[InternalNode]):
         super().__init__(value, parent, YieldNode.defaultVerb)
-
-
-def getLeaves(root: Optional[Node]) -> Iterable[LeafNode]:
-    if root is None:
-        print('getLeaves: found None node', file=sys.stderr)
-    elif isinstance(root, LeafNode):
-        yield root
-    elif isinstance(root, InternalNode):
-        for kid in root.kids:
-            yield from getLeaves(kid)
-    else:
-        raise TypeError('getLeaves: root has type {}'.format(type(root).__name__))
 
 
 GraphEdge = tuple[int, int, Optional[int]]
