@@ -247,13 +247,14 @@ def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
 
 class LinConstrTreeExplorer(TreeExplorer):
     def __init__(self, baseConstraintsList: Sequence[Expr | bool] = (),
-            ineqMode: IneqMode = IneqMode.exact) -> None:
+            ineqMode: IneqMode = IneqMode.exact, storeLeafConstr: bool = True) -> None:
         super().__init__()
         self.baseConstraintsDict: ConstrDict = {}
         self.ineqMode = ineqMode
         for expr in baseConstraintsList:
             addConstrToDict(expr, True, self.baseConstraintsDict, ineqMode)
         self.constraints: ConstrDict = dict(self.baseConstraintsDict)
+        self.storeLeafConstr = storeLeafConstr
 
     def noteIf(self, expr: Expr, b: bool) -> None:
         addConstrToDict(expr, b, self.constraints, self.ineqMode)
@@ -281,8 +282,13 @@ class LinConstrTreeExplorer(TreeExplorer):
                 self.constraints[coeffs] = falseInt2
                 return (False, not trueInt2.isEmpty(), linExpr)
 
-    def noteReturn(self, expr: object) -> None:
+    def noteReturn(self, expr: object) -> Optional[ConstrMap]:
+        constraints = self.constraints
         self.constraints = dict(self.baseConstraintsDict)
+        if self.storeLeafConstr:
+            return constraints
+        else:
+            return None
 
     def displayConstraints(self, fp: TextIO) -> None:
         displayConstraints(self.constraints, fp)

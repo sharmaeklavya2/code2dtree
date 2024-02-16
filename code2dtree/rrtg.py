@@ -104,7 +104,7 @@ class RepeatedRunTreeGen:
         self.parent = None
         self.current = self.root
         self.kidIndex = None
-        self.explorer.noteReturn(expr)
+        node.explorerOutput = self.explorer.noteReturn(expr)
 
     def runOnce(self, func: Callable[..., object], funcArgs: FuncArgs) -> None:
         Expr.globalTreeGen = self

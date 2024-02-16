@@ -12,7 +12,8 @@ class TreeExplorer:
     def noteIf(self, expr: Expr, b: bool) -> None:
         pass
 
-    def noteReturn(self, expr: object) -> None:
+    def noteReturn(self, expr: object) -> object:
+        # returns a value that is stored in the leaf node
         pass
 
 

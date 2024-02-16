@@ -87,6 +87,7 @@ class Node:
 class LeafNode(Node):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
         super().__init__(expr, parent, True)
+        self.explorerOutput: object = None
 
     def getKids(self) -> Sequence[None]:
         return ()
