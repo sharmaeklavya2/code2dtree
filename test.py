@@ -7,6 +7,7 @@ from code2dtree.interval import Interval
 from code2dtree.linExpr import parseLinCmpExpr, LinCmpExpr
 from code2dtree.linExpr import addConstrToDict, ConstrDict, LinConstrTreeExplorer, IneqMode
 from code2dtree.linExpr import displayConstraints  # noqa
+from code2dtree.linProg import LinProg, DEFAULT_BOUND, LpStatus
 
 
 class ExprTest(unittest.TestCase):
@@ -114,6 +115,52 @@ class LinCmpExprTest(unittest.TestCase):
         s = '(x - 2 * y ≥ 3)'
         self.assertEqual(str(expr1), s)
         self.assertEqual(str(expr2), s)
+
+
+class LinProgTest(unittest.TestCase):
+    def testFlatten(self) -> None:
+        x, y = Var.get('x'), Var.get('y')
+        int23 = Interval(2, 3, True, True)
+        lp = LinProg('min', [x, [x, y], {'z': int23}], 2 - 3 * x)
+        self.assertEqual(lp.varNames, ['x', 'y', 'z'])
+        self.assertEqual(lp.varNameToIndex, {'x': 0, 'y': 1, 'z': 2})
+        self.assertEqual(lp.varBounds, [DEFAULT_BOUND, DEFAULT_BOUND, int23])
+        self.assertEqual(lp.objConst, 2)
+        self.assertEqual(lp.objVec, [-3, 0, 0])
+
+    def getLp(self) -> LinProg:
+        x, y = Var.get('x'), Var.get('y')
+        lp = LinProg('max', ['x', y], x + y)
+        lp.addConstraintExpr(2*x + 3*y <= 13)
+        lp.addConstraintExpr(2*x + y < 7.1)
+        lp.addConstraintExpr(x + y >= 3)
+        lp.addConstraintExpr(x - x >= 0)
+        return lp
+
+    def testScipyInput(self) -> None:
+        import numpy as np
+        lp = self.getLp()
+        # print(lp)
+        scipyInput = lp.getScipyInput(0.1)
+        self.assertIsNotNone(scipyInput)
+        assert scipyInput is not None  # for type checking
+        self.assertTrue(np.array_equal(scipyInput.c, [-1, -1]))
+        self.assertTrue(np.array_equal(scipyInput.A_eq, np.zeros((0, 2))))
+        self.assertTrue(np.array_equal(scipyInput.b_eq, np.zeros((0,))))
+        self.assertTrue(np.array_equal(scipyInput.A_ub, [[2, 3], [2, 1], [-1, -1]]))
+        self.assertTrue(np.array_equal(scipyInput.b_ub, [13, 7, -3]))
+        defaultBound = (0, None)
+        self.assertTrue(scipyInput.bounds, [defaultBound] * 2)
+
+    def testSolve(self) -> None:
+        import numpy as np
+        lp = self.getLp()
+        # print(lp)
+        res = lp.solve(tol=0.1)
+        # print(res)
+        self.assertEqual(res.status, LpStatus.success)
+        self.assertTrue(np.array_equal(res.optSol, [2, 3]))
+        self.assertEqual(res.optVal, 5)
 
 
 if __name__ == '__main__':

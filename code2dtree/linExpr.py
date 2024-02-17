@@ -75,6 +75,12 @@ def parseAffineHelper(expr: object, coeffMul: Real, coeffDict: dict[object, Real
         return validateRealness(expr) * coeffMul
 
 
+def parseAffine(expr: object) -> tuple[Mapping[object, Real], Real]:
+    coeffDict: dict[object, Real] = {}
+    b = parseAffineHelper(expr, 1, coeffDict)
+    return (coeffDict, b)
+
+
 def argReprMin(a: Iterable[T]) -> Optional[T]:
     minX = None
     minY: Optional[str] = None
@@ -111,6 +117,8 @@ def displayLinExprHelper(coeffs: Iterable[tuple[object, Real]], lineParts: list[
             lineParts.append('*')
         lineParts.append(str(varName))
         isFirst = False
+    if isFirst:
+        lineParts.append('0')
 
 
 class LinCmpExpr(Expr):
