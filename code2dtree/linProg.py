@@ -213,6 +213,6 @@ class LinProg:
         from scipy.optimize import linprog  # type: ignore[import]
         rawOut = linprog(c=rawIn.c, A_eq=rawIn.A_eq, b_eq=rawIn.b_eq, A_ub=rawIn.A_ub, b_ub=rawIn.b_ub,
             bounds=rawIn.bounds)
-        outVal = rawOut.fun if self.objType == 'min' else -rawOut.fun
+        outVal = self.objConst + (rawOut.fun if self.objType == 'min' else -rawOut.fun)
         return LinProgOutput(optSol=rawOut.x, optVal=outVal, slack=rawOut.slack,
             nIter=rawOut.nit, status=LpStatus(rawOut.status), message=rawOut.message)

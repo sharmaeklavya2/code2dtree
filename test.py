@@ -130,7 +130,7 @@ class LinProgTest(unittest.TestCase):
 
     def getLp(self) -> LinProg:
         x, y = Var.get('x'), Var.get('y')
-        lp = LinProg('max', ['x', y], x + y)
+        lp = LinProg('max', ['x', y], x + y + 1)
         lp.addConstraintExpr(2*x + 3*y <= 13)
         lp.addConstraintExpr(2*x + y < 7.1)
         lp.addConstraintExpr(x + y >= 3)
@@ -160,7 +160,7 @@ class LinProgTest(unittest.TestCase):
         # print(res)
         self.assertEqual(res.status, LpStatus.success)
         self.assertTrue(np.array_equal(res.optSol, [2, 3]))
-        self.assertEqual(res.optVal, 5)
+        self.assertEqual(res.optVal, 6)
 
 
 if __name__ == '__main__':
