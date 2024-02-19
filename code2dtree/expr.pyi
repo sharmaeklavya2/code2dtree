@@ -58,7 +58,9 @@ class Var(Expr):
     def __init__(self, name: object) -> None: ...
 
 
-def getVarList(listName: str, n: int, brackets: bool = True) -> list[Var]: ...
+SUB_TR_TABLE: Mapping[int, Optional[int]]
+
+def getVarList(listName: str, n: int, style: str = ...) -> list[Var]: ...
 
 
 class BinExpr(Expr):

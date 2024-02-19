@@ -84,11 +84,22 @@ class Var(Expr):
         return (self.__class__.__name__, self.name)
 
 
-def getVarList(listName: str, n: int, brackets: bool = True) -> list[Var]:
-    if brackets:
-        return [Var.get(f'x[{i}]') for i in range(n)]
+varListStyles = {
+    'python': '{name}[{i}]',
+    'uscore': '{name}_{i}',
+    'simple': '{name}{i}',
+    'small': '{name}{iS}',
+}
+
+SUB_TR_TABLE = str.maketrans('0123456789', '₀₁₂₃₄₅₆₇₈₉')
+
+
+def getVarList(listName: str, n: int, style: str = 'python') -> list[Var]:
+    if style != 'small':
+        return [Var.get(varListStyles[style].format(name=listName, i=i)) for i in range(n)]
     else:
-        return [Var.get(f'x{i}') for i in range(n)]
+        return [Var.get(varListStyles[style].format(name=listName,
+            iS=str(i).translate(SUB_TR_TABLE))) for i in range(n)]
 
 
 class BinExpr(Expr):
