@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Collection, Iterable, Mapping, MutableMapping, MutableSequence, Sequence
 from typing import Any, Literal, NamedTuple, Optional
 from enum import IntEnum
@@ -107,6 +108,24 @@ class LinProg:
         self.eqNameList: list[Optional[str]] = []
         self.aEqList: list[Sequence[Real]] = []
         self.bEqList: list[Real] = []
+
+    def copy(self) -> LinProg:
+        newLp = LinProg(self.objType, [], 0)
+        newLp.varNames = self.varNames
+        newLp.varNameToIndex = self.varNameToIndex
+        newLp.varBounds = self.varBounds
+        newLp.objConst = self.objConst
+        newLp.objVec = self.objVec
+
+        newLp.hasFalse = self.hasFalse
+        newLp.ubNameList = self.ubNameList.copy()
+        newLp.aUbList = self.aUbList.copy()
+        newLp.bUbList = self.bUbList.copy()
+        newLp.isStrictList = self.isStrictList.copy()
+        newLp.eqNameList = self.eqNameList.copy()
+        newLp.aEqList = self.aEqList.copy()
+        newLp.bEqList = self.bEqList.copy()
+        return newLp
 
     def addConstraint(self, coeffs: Collection[tuple[object, Real]], op: str, rhs: Real,
             name: Optional[str] = None) -> None:

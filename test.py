@@ -141,7 +141,7 @@ class LinProgTest(unittest.TestCase):
         import numpy as np
         lp = self.getLp()
         # print(lp)
-        scipyInput = lp.getScipyInput(0.1)
+        scipyInput = lp.copy().getScipyInput(0.1)
         self.assertIsNotNone(scipyInput)
         assert scipyInput is not None  # for type checking
         self.assertTrue(np.array_equal(scipyInput.c, [-1, -1]))
