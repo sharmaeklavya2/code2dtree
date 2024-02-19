@@ -10,8 +10,9 @@ from .types import Real, validateRealness
 from .interval import Interval
 
 ORSet = Set[tuple[object, Real]]
-ConstrMap = Mapping[ORSet, Interval]
-ConstrDict = dict[ORSet, Interval]
+ORColl = Set[tuple[object, Real]]
+ConstrMap = Mapping[ORColl, Interval]
+ConstrDict = dict[ORColl, Interval]
 T = TypeVar('T')
 
 FLIP_OP = {  # x op y iff y FLIP_OP[op] x

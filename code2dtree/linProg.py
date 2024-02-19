@@ -6,7 +6,7 @@ from enum import IntEnum
 from .expr import Var, Expr
 from .interval import Interval
 from .types import Real
-from .linExpr import evalOp, displayLinExprHelper, FLIP_OP, IneqMode, parseAffine, parseLinCmpExpr
+from .linExpr import evalOp, displayLinExprHelper, FLIP_OP, IneqMode, parseAffine, parseLinCmpExpr, ORColl
 
 DEFAULT_BOUND = Interval(0, None, True, False)
 DEFAULT_TOL = 1e-8
@@ -174,9 +174,13 @@ class LinProg:
                 newName = name + '.ub' if name is not None else None
                 self.addConstraint(coeffs, '≤' if interval.endClosed else '<', interval.end, name=newName)
 
-    def addDoubleConstraints(self, constrs: Iterable[tuple[Collection[tuple[object, Real]], Interval]]) -> None:
+    def addDoubleConstraints(self, constrs: Iterable[tuple[ORColl, Interval]] | Mapping[ORColl, Interval]) -> None:
         # can accept a ConstrMap.items()
-        for coeffs, interval in constrs:
+        if isinstance(constrs, Mapping):
+            constrsIter: Iterable[tuple[ORColl, Interval]] = constrs.items()
+        else:
+            constrsIter = constrs
+        for coeffs, interval in constrsIter:
             self.addDoubleConstraint(coeffs, interval)
 
     def __str__(self) -> str:
