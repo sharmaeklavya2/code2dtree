@@ -1,6 +1,6 @@
 from __future__ import annotations
 from enum import StrEnum
-from collections.abc import Iterable, Mapping, Sequence, Set
+from collections.abc import Collection, Iterable, Mapping, Sequence, Set
 from typing import Optional, TextIO, TypeVar
 
 from .expr import Var, Expr, BinExpr, UnExpr
@@ -10,7 +10,7 @@ from .types import Real, validateRealness
 from .interval import Interval
 
 ORSet = Set[tuple[object, Real]]
-ORColl = Set[tuple[object, Real]]
+ORColl = Collection[tuple[object, Real]]
 ConstrMap = Mapping[ORColl, Interval]
 ConstrDict = dict[ORColl, Interval]
 T = TypeVar('T')

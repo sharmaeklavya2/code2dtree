@@ -127,8 +127,7 @@ class LinProg:
         newLp.bEqList = self.bEqList.copy()
         return newLp
 
-    def addConstraint(self, coeffs: Collection[tuple[object, Real]], op: str, rhs: Real,
-            name: Optional[str] = None) -> None:
+    def addConstraint(self, coeffs: ORColl, op: str, rhs: Real, name: Optional[str] = None) -> None:
         assert op in ('==', '≤', '<', '≥', '>')
         if len(coeffs) == 0:
             if not evalOp(0, op, rhs):
