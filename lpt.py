@@ -4,7 +4,10 @@
 
 import argparse
 from collections.abc import Generator, Iterable, Sequence
+import os.path
+import subprocess
 from typing import NamedTuple
+
 from code2dtree import Expr, genFunc2dtree, getVarList
 from code2dtree.node import printGraphViz, PrintOptions, PrintStatus
 from code2dtree.linExpr import LinConstrTreeExplorer
@@ -44,10 +47,10 @@ def greedy(x: Iterable[Real | Expr], m: int) -> Generator[AssnEvent, None, Seque
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('n', type=int, help='number of jobs')
     parser.add_argument('m', type=int, help='number of machines')
-    parser.add_argument('-o', '--output', help='path to dot output file')
+    parser.add_argument('-o', '--output', help='path to output (dot, svg)')
     parser.add_argument('--lineNo', action='store_true', default=False,
         help='display line numbers')
     args = parser.parse_args()
@@ -57,8 +60,17 @@ def main() -> None:
     te = LinConstrTreeExplorer([x[i-1] >= x[i] for i in range(1, args.n)])
     dtree = genFunc2dtree(greedy, (x, args.m), te)
     if args.output is not None:
-        with open(args.output, 'w') as fp:
-            printGraphViz(dtree, fp)
+        baseName, ext = os.path.splitext(args.output)
+        if ext == '.dot':
+            with open(args.output, 'w') as fp:
+                printGraphViz(dtree, fp)
+        elif ext == '.svg':
+            dotName = args.output + '.dot'
+            with open(dotName, 'w') as fp:
+                printGraphViz(dtree, fp)
+            subprocess.run(['dot', '-T', 'svg', dotName, '-o', args.output], check=True)
+        else:
+            raise ValueError('unsupported output extension ' + ext)
     else:
         lineNoCols = 4 if args.lineNo else 0
         options = PrintOptions(lineNoCols=lineNoCols)
