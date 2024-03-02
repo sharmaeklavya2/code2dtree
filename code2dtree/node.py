@@ -69,6 +69,9 @@ class Node:
     def getKids(self) -> Sequence[Optional[Node]]:
         raise NotImplementedError()
 
+    def getLabel(self) -> str:
+        raise NotImplementedError()
+
     def getLeaves(self) -> Iterable[LeafNode]:
         raise NotImplementedError()
 
@@ -114,12 +117,15 @@ class ReturnNode(LeafNode):
     def __init__(self, expr: object, parent: Optional[InternalNode]):
         super().__init__(expr, parent)
 
+    def getLabel(self) -> str:
+        return 'return ' + prettyExprRepr(self.expr)
+
     def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if not self.printAttr.visible:
             return
         if status is None:
             status = PrintStatus()
-        termPrint(getPrefix(self.printAttr, options, status) + 'return ' + prettyExprRepr(self.expr),
+        termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(),
             options=self.printAttr.termOpts, file=options.file)
         status.leaves += 1
         status.nodes += 1
@@ -182,13 +188,16 @@ class IfNode(DecisionNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode]):
         super().__init__(expr, parent, 2)
 
+    def getLabel(self, simplify: bool = False) -> str:
+        expr = self.sexpr if simplify else self.expr
+        return 'if ' + prettyExprRepr(expr)
+
     def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if not self.printAttr.visible:
             return
         if status is None:
             status = PrintStatus()
-        expr = self.sexpr if options.simplify else self.expr
-        termPrint(getPrefix(self.printAttr, options, status) + 'if ' + prettyExprRepr(expr) + ':',
+        termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(options.simplify) + ':',
             options=self.printAttr.termOpts, file=options.file)
         status.lines += 1
         status.nodes += 1
@@ -231,16 +240,18 @@ class FrozenIfNode(DecisionNode):
         d['b'] = self.b
         return d
 
+    def getLabel(self, simplify: bool = False) -> str:
+        expr = self.sexpr if simplify else self.expr
+        return (('assert ' if self.kids[0] is not None else 'asserting ')
+            + ('' if self.b else 'not(') + prettyExprRepr(expr) + ('' if self.b else ')'))
+
     def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if not self.printAttr.visible:
             return
         if status is None:
             status = PrintStatus()
         if options.frozenIf or self.kids[0] is None:
-            expr = self.sexpr if options.simplify else self.expr
-            termPrint(getPrefix(self.printAttr, options, status)
-                + ('assert' if self.kids[0] is not None else 'asserting'),
-                ('' if self.b else 'not(') + prettyExprRepr(expr) + ('' if self.b else ')'),
+            termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(options.simplify),
                 options=self.printAttr.termOpts, file=options.file)
             status.nodes += 1
             status.lines += 1
@@ -272,12 +283,15 @@ class InfoNode(InternalNode):
         else:
             return InfoNode(value, parent, verb)
 
+    def getLabel(self) -> str:
+        return self.verb + ' ' + prettyExprRepr(self.expr)
+
     def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if status is None:
             status = PrintStatus()
         if self.printAttr.visible:
-            termPrint(getPrefix(self.printAttr, options, status) + self.verb,
-                str(self.expr), options=self.printAttr.termOpts, file=options.file)
+            termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(),
+                options=self.printAttr.termOpts, file=options.file)
             status.nodes += 1
             status.lines += 1
         if self.kids[0] is None:
@@ -379,7 +393,7 @@ def printGraphViz(root: Optional[Node], file: TextIO) -> None:
         V, E = toVE(root)
         print('digraph DTree{', file=file)
         for i, w in enumerate(V):
-            print('v{} [label="{}"];'.format(i, prettyExprRepr(w.expr)), file=file)
+            print('v{} [label="{}"];'.format(i, w.getLabel()), file=file)
         for (u, v, label) in E:
             if label is None:
                 print(f'v{u} -> v{v};', file=file)
