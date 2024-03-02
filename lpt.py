@@ -6,10 +6,11 @@ import argparse
 from collections.abc import Generator, Iterable, Sequence
 import os.path
 import subprocess
+import json
 from typing import NamedTuple
 
 from code2dtree import Expr, genFunc2dtree, getVarList
-from code2dtree.node import printGraphViz, PrintOptions, PrintStatus
+from code2dtree.node import dtreeToFlatJson, printGraphViz, PrintOptions, PrintStatus
 from code2dtree.linExpr import LinConstrTreeExplorer
 from code2dtree.types import Real
 
@@ -69,6 +70,10 @@ def main() -> None:
             with open(dotName, 'w') as fp:
                 printGraphViz(dtree, fp)
             subprocess.run(['dot', '-T', 'svg', dotName, '-o', args.output], check=True)
+        elif ext == '.json':
+            jsonObj = dtreeToFlatJson(dtree)
+            with open(args.output, 'w') as fp:
+                json.dump(jsonObj, fp, indent=4)
         else:
             raise ValueError('unsupported output extension ' + ext)
     else:

@@ -1,11 +1,13 @@
 from __future__ import annotations
 from abc import abstractmethod
-from typing import Protocol, TypeVar
+from collections.abc import Mapping, Sequence
+from typing import Protocol, TypeVar, Union
 from fractions import Fraction
 
 
 CompT = TypeVar('CompT', bound='Comparable')
 Real = int | float | Fraction
+JsonVal = Union[None, bool, str, float, int, Sequence['JsonVal'], Mapping[str, 'JsonVal']]
 
 
 def validateRealness(x: object) -> Real:

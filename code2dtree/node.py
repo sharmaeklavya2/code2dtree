@@ -1,11 +1,12 @@
 from __future__ import annotations
 import sys
-from dataclasses import dataclass
+import dataclasses
 from collections.abc import Iterable, MutableSequence, Sequence
 from typing import Any, Optional, TextIO, NamedTuple
 
 from .expr import Expr, prettyExprRepr
 from .terminal import termPrint, TermOptions
+from .types import JsonVal
 
 
 class PrintOptions(NamedTuple):
@@ -17,7 +18,7 @@ class PrintOptions(NamedTuple):
     marginCols: int = 0
 
 
-@dataclass
+@dataclasses.dataclass
 class PrintStatus:
     nodes: int = 0
     leaves: int = 0
@@ -25,7 +26,7 @@ class PrintStatus:
     indent: int = 0
 
 
-@dataclass
+@dataclasses.dataclass
 class PrintAttr:
     visible: bool = True
     margin: str = ''
@@ -82,6 +83,19 @@ class Node:
             else:
                 node = kids[index]
         return node
+
+    def __json__(self) -> dict[str, JsonVal]:
+        return self.toIsolatedJson()
+
+    def toIsolatedJson(self) -> dict[str, JsonVal]:
+        # isolated means that information about parents and kids is absent
+        return {
+            'type': type(self).__name__,
+            'expr': prettyExprRepr(self.expr),
+            'explored': self.explored,
+            'printAttr': dataclasses.asdict(self.printAttr),
+            'userData': self.userData,
+        }
 
 
 class LeafNode(Node):
@@ -147,11 +161,21 @@ class InternalNode(Node):
             parts.append('{}={}'.format(i, kid))
         return ', '.join(parts) + ')'
 
+    def toIsolatedJson(self) -> dict[str, JsonVal]:
+        d = super().toIsolatedJson()
+        d['nKids'] = len(self.kids)
+        return d
+
 
 class DecisionNode(InternalNode):
     def __init__(self, expr: Expr, parent: Optional[InternalNode], nKids: int):
         super().__init__(expr, parent, nKids)
         self.sexpr: Optional[Expr] = None  # simplified expr
+
+    def toIsolatedJson(self) -> dict[str, JsonVal]:
+        d = super().toIsolatedJson()
+        d['sexpr'] = prettyExprRepr(self.sexpr)
+        return d
 
 
 class IfNode(DecisionNode):
@@ -202,6 +226,11 @@ class FrozenIfNode(DecisionNode):
         super().__init__(expr, parent, 1)
         self.b = b
 
+    def toIsolatedJson(self) -> dict[str, JsonVal]:
+        d = super().toIsolatedJson()
+        d['b'] = self.b
+        return d
+
     def print(self, options: PrintOptions = DEFAULT_PO, status: Optional[PrintStatus] = None) -> None:
         if not self.printAttr.visible:
             return
@@ -228,6 +257,11 @@ class InfoNode(InternalNode):
     def __init__(self, value: object, parent: Optional[InternalNode], verb: str):
         super().__init__(value, parent, 1)
         self.verb = verb
+
+    def toIsolatedJson(self) -> dict[str, JsonVal]:
+        d = super().toIsolatedJson()
+        d['verb'] = self.verb
+        return d
 
     @classmethod
     def get(cls, value: object, parent: Optional[InternalNode], verb: str) -> InfoNode:
@@ -308,6 +342,34 @@ def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
     else:
         print('Warning: empty tree passed to toVE', file=sys.stderr)
     return (V, E)
+
+
+def dtreeToFlatJson(root: Optional[Node]) -> dict[str, JsonVal]:
+    nodeJsons: list[Optional[JsonVal]] = []
+    parentOf: list[Optional[int]] = []
+    output: dict[str, JsonVal] = {'parent': parentOf, 'nodes': nodeJsons}
+    if root is None:
+        print('Warning: empty tree passed to dtreeToJson', file=sys.stderr)
+
+    def explore(node: Optional[Node], parentId: Optional[int]) -> Optional[int]:
+        nodeId = len(nodeJsons)
+        parentOf.append(parentId)
+        if node is None:
+            nodeJsons.append(None)
+            return None
+        else:
+            nodeJson = node.toIsolatedJson()
+            nodeJsons.append(nodeJson)
+            nodeJson['parentId'] = parentId
+            kidIds: list[Optional[int]] = []
+            nodeJson['kidIds'] = kidIds
+            for kid in node.getKids():
+                kidId = explore(kid, nodeId)
+                kidIds.append(kidId)
+            return nodeId
+
+    explore(root, None)
+    return output
 
 
 def printGraphViz(root: Optional[Node], file: TextIO) -> None:

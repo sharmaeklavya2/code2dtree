@@ -213,6 +213,8 @@ overloadOps()
 def prettyExprRepr(x: object) -> str:
     if isinstance(x, str):
         return repr(x)
+    elif isinstance(x, tuple) and hasattr(x, '_fields'):  # x is a namedtuple
+        return repr(x)
     elif isinstance(x, Expr):
         s = str(x)
         return s[1:-1] if s[0] == '(' else s
