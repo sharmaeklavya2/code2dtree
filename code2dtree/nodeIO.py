@@ -1,6 +1,9 @@
 from __future__ import annotations
 import sys
+import os.path
+import json
 import dataclasses
+import subprocess
 from typing import NamedTuple, Optional, TextIO
 
 from .node import Node, LeafNode, InternalNode, IfNode, FrozenIfNode, InfoNode
@@ -191,3 +194,28 @@ def printGraphViz(root: Node, file: TextIO) -> None:
         else:
             print(f'v{u} -> v{v} [label="{label}"];', file=file)
     print('}', file=file)
+
+
+SAVE_FORMATS = ('txt', 'dot', 'svg', 'json')
+
+
+def saveTree(dtree: Node, fpath: str) -> None:
+    basePath, ext = os.path.splitext(fpath)
+    if ext == '.txt':
+        with open(fpath, 'w') as fp:
+            options = PrintOptions(file=fp, lineNoCols=3, marginCols=3)
+            printTree(dtree, options)
+    elif ext == '.dot':
+        with open(fpath, 'w') as fp:
+            printGraphViz(dtree, fp)
+    elif ext == '.svg':
+        dotPath = basePath + '.dot'
+        with open(dotPath, 'w') as fp:
+            printGraphViz(dtree, fp)
+        subprocess.run(['dot', '-T', 'svg', dotPath, '-o', fpath], check=True)
+    elif ext == '.json':
+        jsonObj = dtreeToFlatJson(dtree)
+        with open(fpath, 'w') as fp:
+            json.dump(jsonObj, fp, indent=4)
+    else:
+        raise ValueError('unsupported output extension ' + ext)

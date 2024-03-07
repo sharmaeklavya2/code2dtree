@@ -2,7 +2,7 @@
 
 import argparse
 from code2dtree import func2dtree, getVarList
-from code2dtree.nodeIO import printTree, printGraphViz
+from code2dtree.nodeIO import printTree, saveTree, SAVE_FORMATS
 from code2dtree.types import CompT
 
 
@@ -19,15 +19,15 @@ def selectionSorted(a: list[CompT]) -> list[CompT]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('n', type=int, help='number of elements in list to sort')
-    parser.add_argument('-o', '--output', help='path to dot output file')
+    formats = ', '.join(SAVE_FORMATS)
+    parser.add_argument('-o', '--output', help=f'path to output file (formats: {formats})')
     args = parser.parse_args()
 
     a = getVarList('a', args.n)
     print('input:', a)
     dtree = func2dtree(selectionSorted, (a,))
     if args.output is not None:
-        with open(args.output, 'w') as fp:
-            printGraphViz(dtree, fp)
+        saveTree(dtree, args.output)
     else:
         printTree(dtree)
 
