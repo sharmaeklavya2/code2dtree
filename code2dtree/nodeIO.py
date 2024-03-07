@@ -118,7 +118,7 @@ def printTree(node: Node, options: PrintOptions = DEFAULT_PO, status: Optional[P
 GraphEdge = tuple[int, int, Optional[int]]
 
 
-def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
+def toVE(root: Node) -> tuple[list[Node], list[GraphEdge]]:
     V = []
     E: list[GraphEdge] = []
     id = 0
@@ -150,19 +150,14 @@ def toVE(root: Optional[Node]) -> tuple[list[Node], list[GraphEdge]]:
         elif isinstance(u, InternalNode):
             raise TypeError('node type {} not supported'.format(repr(type(u).__name__)))
 
-    if root is not None:
-        explore(root, 0)
-    else:
-        print('Warning: empty tree passed to toVE', file=sys.stderr)
+    explore(root, 0)
     return (V, E)
 
 
-def dtreeToFlatJson(root: Optional[Node]) -> dict[str, JsonVal]:
+def dtreeToFlatJson(root: Node) -> dict[str, JsonVal]:
     nodeJsons: list[Optional[JsonVal]] = []
     parentOf: list[Optional[int]] = []
     output: dict[str, JsonVal] = {'parent': parentOf, 'nodes': nodeJsons}
-    if root is None:
-        print('Warning: empty tree passed to dtreeToJson', file=sys.stderr)
 
     def explore(node: Optional[Node], parentId: Optional[int]) -> Optional[int]:
         nodeId = len(nodeJsons)
@@ -185,17 +180,14 @@ def dtreeToFlatJson(root: Optional[Node]) -> dict[str, JsonVal]:
     return output
 
 
-def printGraphViz(root: Optional[Node], file: TextIO) -> None:
-    if root is None:
-        print('Warning: empty tree passed to printGraphViz', file=sys.stderr)
-    else:
-        V, E = toVE(root)
-        print('digraph DTree{', file=file)
-        for i, w in enumerate(V):
-            print('v{} [label="{}"];'.format(i, w.getLabel()), file=file)
-        for (u, v, label) in E:
-            if label is None:
-                print(f'v{u} -> v{v};', file=file)
-            else:
-                print(f'v{u} -> v{v} [label="{label}"];', file=file)
-        print('}', file=file)
+def printGraphViz(root: Node, file: TextIO) -> None:
+    V, E = toVE(root)
+    print('digraph DTree{', file=file)
+    for i, w in enumerate(V):
+        print('v{} [label="{}"];'.format(i, w.getLabel()), file=file)
+    for (u, v, label) in E:
+        if label is None:
+            print(f'v{u} -> v{v};', file=file)
+        else:
+            print(f'v{u} -> v{v} [label="{label}"];', file=file)
+    print('}', file=file)
