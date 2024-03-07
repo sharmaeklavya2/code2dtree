@@ -5,13 +5,13 @@ from collections.abc import Iterable, MutableSequence, Sequence
 from typing import Any, Optional, TextIO, NamedTuple
 
 from .expr import Expr, prettyExprRepr
-from .terminal import termPrint, TermOptions
+from .terminal import termPrint, TermColorOptions
 from .types import JsonVal
 
 
 class PrintOptions(NamedTuple):
     simplify: bool = False
-    frozenIf: bool = True
+    showFrozenIf: bool = True
     indentStr: str = '  '
     file: TextIO = sys.stdout
     lineNoCols: int = 0
@@ -30,7 +30,7 @@ class PrintStatus:
 class PrintAttr:
     visible: bool = True
     margin: str = ''
-    termOpts: Optional[TermOptions] = None
+    termColorOpts: Optional[TermColorOptions] = None
 
 
 DEFAULT_PO = PrintOptions()
@@ -87,9 +87,6 @@ class Node:
                 node = kids[index]
         return node
 
-    def __json__(self) -> dict[str, JsonVal]:
-        return self.toIsolatedJson()
-
     def toIsolatedJson(self) -> dict[str, JsonVal]:
         # isolated means that information about parents and kids is absent
         return {
@@ -126,7 +123,7 @@ class ReturnNode(LeafNode):
         if status is None:
             status = PrintStatus()
         termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(),
-            options=self.printAttr.termOpts, file=options.file)
+            options=self.printAttr.termColorOpts, file=options.file)
         status.leaves += 1
         status.nodes += 1
         status.lines += 1
@@ -198,34 +195,34 @@ class IfNode(DecisionNode):
         if status is None:
             status = PrintStatus()
         termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(options.simplify) + ':',
-            options=self.printAttr.termOpts, file=options.file)
+            options=self.printAttr.termColorOpts, file=options.file)
         status.lines += 1
         status.nodes += 1
         status.indent += 1
         if self.kids[1] is None:
             termPrint(getPrefix(self.printAttr, options, status) + Node.noneString,
-                options=self.printAttr.termOpts, file=options.file)
+                options=self.printAttr.termColorOpts, file=options.file)
             status.lines += 1
         elif self.kids[1].printAttr.visible:
             self.kids[1].print(options, status)
         else:
             termPrint(getPrefix(self.printAttr, options, status) + Node.passString,
-                options=self.printAttr.termOpts, file=options.file)
+                options=self.printAttr.termColorOpts, file=options.file)
             status.lines += 1
         status.indent -= 1
         termPrint(getPrefix(self.printAttr, options, status) + 'else:',
-            options=self.printAttr.termOpts, file=options.file)
+            options=self.printAttr.termColorOpts, file=options.file)
         status.lines += 1
         status.indent += 1
         if self.kids[0] is None:
             termPrint(getPrefix(self.printAttr, options, status) + Node.noneString,
-                options=self.printAttr.termOpts, file=options.file)
+                options=self.printAttr.termColorOpts, file=options.file)
             status.lines += 1
         elif self.kids[0].printAttr.visible:
             self.kids[0].print(options, status)
         else:
             termPrint(getPrefix(self.printAttr, options, status) + Node.passString,
-                options=self.printAttr.termOpts, file=options.file)
+                options=self.printAttr.termColorOpts, file=options.file)
             status.lines += 1
         status.indent -= 1
 
@@ -250,14 +247,14 @@ class FrozenIfNode(DecisionNode):
             return
         if status is None:
             status = PrintStatus()
-        if options.frozenIf or self.kids[0] is None:
+        if options.showFrozenIf or self.kids[0] is None:
             termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(options.simplify),
-                options=self.printAttr.termOpts, file=options.file)
+                options=self.printAttr.termColorOpts, file=options.file)
             status.nodes += 1
             status.lines += 1
         if self.kids[0] is None:
             status.indent += 1
-            termPrint(Node.noneString, options=self.printAttr.termOpts, file=options.file)
+            termPrint(Node.noneString, options=self.printAttr.termColorOpts, file=options.file)
             status.lines += 1
             status.indent -= 1
         else:
@@ -291,12 +288,12 @@ class InfoNode(InternalNode):
             status = PrintStatus()
         if self.printAttr.visible:
             termPrint(getPrefix(self.printAttr, options, status) + self.getLabel(),
-                options=self.printAttr.termOpts, file=options.file)
+                options=self.printAttr.termColorOpts, file=options.file)
             status.nodes += 1
             status.lines += 1
         if self.kids[0] is None:
             termPrint(getPrefix(self.printAttr, options, status) + Node.noneString,
-                options=self.printAttr.termOpts, file=options.file)
+                options=self.printAttr.termColorOpts, file=options.file)
             status.lines += 1
         else:
             self.kids[0].print(options, status)

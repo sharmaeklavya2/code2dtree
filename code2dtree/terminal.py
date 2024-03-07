@@ -18,13 +18,13 @@ class Color(IntEnum):
     white = 7
 
 
-class TermOptions(NamedTuple):
+class TermColorOptions(NamedTuple):
     fgColor: Optional[Color] = None
     bgColor: Optional[Color] = None
     bright: Optional[bool] = None
 
 
-def getTermString(options: TermOptions) -> str:
+def getTermString(options: TermColorOptions) -> str:
     nums: list[str] = []
     if options.fgColor is not None:
         nums.append(str(30 + options.fgColor))
@@ -38,7 +38,7 @@ def getTermString(options: TermOptions) -> str:
         return TERM_ESC + ';'.join(nums) + 'm'
 
 
-def termPrint(*args: object, options: Optional[TermOptions], file: TextIO = sys.stdout) -> None:
+def termPrint(*args: object, options: Optional[TermColorOptions], file: TextIO = sys.stdout) -> None:
     if options is None:
         termString = ''
     else:
