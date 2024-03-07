@@ -2,7 +2,7 @@
 
 import argparse
 from code2dtree import func2dtree, getVarList
-from code2dtree.node import printGraphViz
+from code2dtree.nodeIO import printTree, printGraphViz
 from code2dtree.types import CompT
 
 
@@ -29,7 +29,7 @@ def main() -> None:
         with open(args.output, 'w') as fp:
             printGraphViz(dtree, fp)
     else:
-        dtree.print()
+        printTree(dtree)
 
 
 if __name__ == '__main__':

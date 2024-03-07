@@ -10,7 +10,7 @@ import json
 from typing import NamedTuple
 
 from code2dtree import Expr, genFunc2dtree, getVarList
-from code2dtree.node import dtreeToFlatJson, printGraphViz, PrintOptions, PrintStatus
+from code2dtree.nodeIO import printTree, dtreeToFlatJson, printGraphViz, PrintOptions, PrintStatus
 from code2dtree.linExpr import LinConstrTreeExplorer
 from code2dtree.types import Real
 
@@ -80,7 +80,7 @@ def main() -> None:
         lineNoCols = 4 if args.lineNo else 0
         options = PrintOptions(lineNoCols=lineNoCols)
         status = PrintStatus()
-        dtree.print(options, status)
+        printTree(dtree, options, status)
         print(f'\nnodes: {status.nodes}, leaves: {status.leaves}, lines={status.lines}')
 
 
