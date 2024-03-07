@@ -141,7 +141,7 @@ def toVE(root: Node) -> tuple[list[Node], list[GraphEdge]]:
             if v is not None:
                 id += 1
                 vi = id
-                E.append((ui, vi, int(u.b)))
+                E.append((ui, vi, None))
                 explore(v, vi)
         elif isinstance(u, InfoNode):
             v = u.kids[0]
