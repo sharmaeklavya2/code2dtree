@@ -18,7 +18,7 @@ body {
     color: var(--text-color); background-color: var(--bg-color);
 }
 
-/* specific */
+/* dtree */
 .ifTrue, .ifFalse {
     padding-left: 2em;
 }
@@ -44,4 +44,19 @@ body {
 .ifNode.isel0 > summary {
     background-color: var(--bg-danger); color: var(--text-danger);
     border-radius: 0.1em;
+}
+
+/* toolbar */
+#toolbar {
+    display: flex;
+    padding: 0.5em;
+}
+#toolbar > button {
+    font-size: 1em;
+    color: var(--text-color);
+    border: none;
+    padding: 0.4em;
+    margin: 0 0.5em;
+    border-radius: 0.3em;
+    cursor: pointer;
 }

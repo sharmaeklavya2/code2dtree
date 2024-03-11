@@ -1,6 +1,7 @@
 'use strict';
 
 const nodeAndFragClasses = ['node', 'nodeFrag', 'dtree'];
+var dtreeList = null;
 
 function checkBoxChangeHandler(ev) {
     if(ev.target.tagName.toLowerCase() === 'input' && ev.target.getAttribute('type') === 'checkbox') {
@@ -96,7 +97,7 @@ function callPostOrder(elem, f, classes) {
     }
 }
 
-function initSel(dtreeElem) {
+function initSel() {
     for(const checkBoxElem of document.querySelectorAll('.dtree input[type="checkbox"]')) {
         const nodeId = checkBoxElem.getAttribute('name');
         if(nodeId !== null && nodeId.startsWith('node')) {
@@ -104,16 +105,48 @@ function initSel(dtreeElem) {
             selectNode(nodeElem, checkBoxElem.checked);
         }
     }
-    callPostOrder(dtreeElem, updateIsel, nodeAndFragClasses);
+    callPostOrder(dtreeList[0], updateIsel, nodeAndFragClasses);
+}
+
+function resetCheckBoxes() {
+    for(const checkBoxElem of document.querySelectorAll('.dtree input[type="checkbox"]')) {
+        checkBoxElem.checked = false;
+    }
+    initSel();
+}
+
+function invertCheckBoxes() {
+    for(const checkBoxElem of document.querySelectorAll('.dtree input[type="checkbox"]')) {
+        checkBoxElem.checked = !checkBoxElem.checked;
+    }
+    initSel();
+}
+
+function setAllDetails(b) {
+    for(const detailsElem of document.getElementsByTagName('details')) {
+        detailsElem.open = b;
+    }
+}
+
+function addButton(parentElem, id, text, f) {
+    const button = document.createElement('button');
+    button.setAttribute('id', id);
+    button.innerText = text;
+    button.addEventListener('click', f);
+    parentElem.appendChild(button);
 }
 
 function main() {
-    const dtreeList = document.getElementsByClassName('dtree');
+    dtreeList = document.getElementsByClassName('dtree');
     if(dtreeList.length !== 1) {
         throw Exception('there must be exactly one dtree.');
     }
-    initSel(dtreeList[0]);
+    initSel();
     dtreeList[0].addEventListener('change', checkBoxChangeHandler);
+    const toolbar = document.getElementById('toolbar');
+    addButton(toolbar, 'reset', 'Reset selection', resetCheckBoxes);
+    addButton(toolbar, 'contract', 'Contract all', () => {setAllDetails(false);});
+    addButton(toolbar, 'expand', 'Expand all', () => {setAllDetails(true);});
 }
 
 window.addEventListener('load', main);

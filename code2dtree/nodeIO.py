@@ -294,6 +294,7 @@ HTML_TEMPLATE = ("""<!DOCTYPE html>
 """</script>
 </head>
 <body>
+<div id="toolbar"></div>
 """,
 
 """</body>
