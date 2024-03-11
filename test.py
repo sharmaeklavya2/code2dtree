@@ -8,6 +8,7 @@ from code2dtree.linExpr import parseLinCmpExpr, LinCmpExpr
 from code2dtree.linExpr import addConstrToDict, ConstrDict, LinConstrTreeExplorer, IneqMode
 from code2dtree.linExpr import displayConstraints  # noqa
 from code2dtree.linProg import LinProg, DEFAULT_BOUND, LpStatus
+from code2dtree.htmlGen import getTag
 
 
 class ExprTest(unittest.TestCase):
@@ -161,6 +162,13 @@ class LinProgTest(unittest.TestCase):
         self.assertEqual(res.status, LpStatus.success)
         self.assertTrue(np.array_equal(res.optSol, [2, 3]))
         self.assertEqual(res.optVal, 6)
+
+
+class HtmlGenTest(unittest.TestCase):
+    def testTag(self) -> None:
+        self.assertEqual(getTag('p'), '<p>')
+        self.assertEqual(getTag('img', {'src': 'https://example.com/eqn.png', 'title': '"a<b"'}, selfClosing=True),
+            '<img src="https://example.com/eqn.png" title="&quot;a&lt;b&quot;"/>')
 
 
 if __name__ == '__main__':

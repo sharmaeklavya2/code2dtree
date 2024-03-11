@@ -9,7 +9,11 @@ from typing import NamedTuple, Optional, TextIO
 from .node import Node, LeafNode, InternalNode, IfNode, FrozenIfNode, InfoNode
 from .node import PrintAttr
 from .terminal import termPrint
+from .htmlGen import HtmlWriter
 from .types import JsonVal
+
+
+PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class PrintOptions(NamedTuple):
@@ -217,5 +221,83 @@ def saveTree(dtree: Node, fpath: str) -> None:
         jsonObj = dtreeToFlatJson(dtree)
         with open(fpath, 'w') as fp:
             json.dump(jsonObj, fp, indent=4)
+    elif ext == '.html':
+        with open(fpath, 'w') as fp:
+            options = HtmlOptions(file=fp)
+            dtreeToHtml(dtree, options)
     else:
         raise ValueError('unsupported output extension ' + ext)
+
+
+HtmlOptions = PrintOptions
+DEFAULT_HO = HtmlOptions()
+
+
+@dataclasses.dataclass
+class HtmlPrintStatus:
+    writer: HtmlWriter
+    nodes: int = 0
+    leaves: int = 0
+
+
+def dtreeToHtmlHelper(node: Optional[Node], options: HtmlOptions, status: HtmlPrintStatus) -> None:
+    writer = status.writer
+    nodeId = status.nodes
+    status.nodes += 1
+    defaultAttrMap = {'id': 'node' + str(nodeId)}
+    checkBoxAttrMap = {'type': 'checkbox', 'name': 'node' + str(nodeId)}
+    if node is None:
+        with writer.tag('div', defaultAttrMap | {'class': 'node unfinNode'}):
+            writer.addScTag('input', checkBoxAttrMap)
+            writer.addTag('span', IfNode.noneString)
+    elif isinstance(node, LeafNode):
+        with writer.tag('div', defaultAttrMap | {'class': 'node leafNode'}):
+            writer.addScTag('input', checkBoxAttrMap)
+            writer.addTag('span', node.getLabel())
+            status.leaves += 1
+    elif isinstance(node, IfNode):
+        with writer.tag('details', defaultAttrMap | {'class': 'node ifNode'}):
+            with writer.tag('summary'):
+                writer.addScTag('input', checkBoxAttrMap)
+                writer.addTag('span', node.getLabel(options.simplify) + ':')
+            with writer.tag('div', {'class': 'ifTrue'}):
+                dtreeToHtmlHelper(node.kids[1], options, status)
+            writer.addTag('div', 'else:', {'class': 'nodeElse'})
+            with writer.tag('div', {'class': 'ifFalse'}):
+                dtreeToHtmlHelper(node.kids[0], options, status)
+    elif isinstance(node, FrozenIfNode):
+        if options.showFrozenIf or node.kids[0] is None:
+            with writer.tag('div', defaultAttrMap | {'class': 'node frozenIfNode'}):
+                writer.addScTag('input', checkBoxAttrMap)
+                writer.addTag('span', node.getLabel(options.simplify))
+        dtreeToHtmlHelper(node.kids[0], options, status)
+    elif isinstance(node, InfoNode):
+        with writer.tag('div', defaultAttrMap | {'class': 'node infoNode'}):
+            writer.addScTag('input', checkBoxAttrMap)
+            writer.addTag('span', node.getLabel())
+        dtreeToHtmlHelper(node.kids[0], options, status)
+    else:
+        raise ValueError('unsupported node type ' + type(node).__name__)
+
+
+HTML_TEMPLATE = ("""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark light" />
+<style>{style}</style>
+</head>
+<body>""",
+"""</body>
+</html>""")
+
+
+def dtreeToHtml(node: Node, options: HtmlOptions) -> None:
+    with open(os.path.join(PKG_DIR, 'style.css')) as sfp:
+        style = sfp.read()
+    print(HTML_TEMPLATE[0].format(style=style), file=options.file)
+    writer = HtmlWriter(options.file, options.indentStr)
+    status = HtmlPrintStatus(writer=writer)
+    dtreeToHtmlHelper(node, options, status)
+    print(HTML_TEMPLATE[1], file=options.file)
