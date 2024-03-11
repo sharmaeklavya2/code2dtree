@@ -1,12 +1,14 @@
 /* generic */
 body {
     --bg-color: white; --text-color: #202020; --text-secondary: #888; --emph-color: #101010;
-    --text-danger: #dc3545; --text-warning: #ffc107; --text-success: #198754;
+    --text-danger: #721c24; --text-warning: #856404; --text-success: #155724;
+    --bg-danger: #f5c6cb; --bg-warning: #ffeeba; --bg-success: #c3e6cb;
 }
 @media (prefers-color-scheme: dark) {
     body {
         --bg-color: #1b1e20; --text-color: #c8c8c8; --emph-color: #e4e4e4;
-        --text-danger: #e74c3c; --text-warning: #f39c12; --text-success: #00bc8c;
+        --text-danger: #f5c6cb; --text-warning: #ffeeba; --text-success: #c3e6cb;
+        --bg-danger: #721c24; --bg-warning: #856404; --bg-success: #155724;
     }
 }
 
@@ -25,4 +27,21 @@ body {
 }
 .ifNode > summary {
     list-style: none;
+}
+.ifNode:not([open]) > summary::after {
+    content: " …";
+    cursor: pointer;
+}
+
+.unfinNode.isel, .leafNode.isel, .frozenIfNode.isel, .infoNode.isel, .ifNode.isel1 > summary {
+    background-color: var(--bg-success); color: var(--text-success);
+    border-radius: 0.1em;
+}
+.ifNode.isel2 > summary {
+    background-color: var(--bg-warning); color: var(--text-warning);
+    border-radius: 0.1em;
+}
+.ifNode.isel0 > summary {
+    background-color: var(--bg-danger); color: var(--text-danger);
+    border-radius: 0.1em;
 }

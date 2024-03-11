@@ -260,10 +260,10 @@ def dtreeToHtmlHelper(node: Optional[Node], options: HtmlOptions, status: HtmlPr
             with writer.tag('summary'):
                 writer.addScTag('input', checkBoxAttrMap)
                 writer.addTag('span', node.getLabel(options.simplify) + ':')
-            with writer.tag('div', {'class': 'ifTrue'}):
+            with writer.tag('div', {'class': 'nodeFrag ifTrue'}):
                 dtreeToHtmlHelper(node.kids[1], options, status)
             writer.addTag('div', 'else:', {'class': 'nodeElse'})
-            with writer.tag('div', {'class': 'ifFalse'}):
+            with writer.tag('div', {'class': 'nodeFrag ifFalse'}):
                 dtreeToHtmlHelper(node.kids[0], options, status)
     elif isinstance(node, FrozenIfNode):
         if options.showFrozenIf or node.kids[0] is None:
@@ -286,18 +286,31 @@ HTML_TEMPLATE = ("""<!DOCTYPE html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark light" />
-<style>{style}</style>
+<style>""",
+
+"""</style>
+<script>""",
+
+"""</script>
 </head>
-<body>""",
+<body>
+""",
+
 """</body>
 </html>""")
 
 
 def dtreeToHtml(node: Node, options: HtmlOptions) -> None:
-    with open(os.path.join(PKG_DIR, 'style.css')) as sfp:
-        style = sfp.read()
-    print(HTML_TEMPLATE[0].format(style=style), file=options.file)
+    print(HTML_TEMPLATE[0], file=options.file)
+    with open(os.path.join(PKG_DIR, 'style.css')) as fp:
+        options.file.write(fp.read())
+    print(HTML_TEMPLATE[1], file=options.file)
+    with open(os.path.join(PKG_DIR, 'dtree.js')) as fp:
+        options.file.write(fp.read())
+    options.file.write(HTML_TEMPLATE[2])
+
     writer = HtmlWriter(options.file, options.indentStr)
     status = HtmlPrintStatus(writer=writer)
-    dtreeToHtmlHelper(node, options, status)
-    print(HTML_TEMPLATE[1], file=options.file)
+    with writer.tag('div', {'class': 'dtree'}):
+        dtreeToHtmlHelper(node, options, status)
+    print(HTML_TEMPLATE[3], file=options.file)
