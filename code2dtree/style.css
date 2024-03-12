@@ -1,14 +1,14 @@
 /* generic */
 body {
     --bg-color: white; --text-color: #202020; --text-secondary: #888; --emph-color: #101010;
-    --text-danger: #721c24; --text-warning: #856404; --text-success: #155724;
-    --bg-danger: #f5c6cb; --bg-warning: #ffeeba; --bg-success: #c3e6cb;
+    --bg-danger: #f28c8c; --bg-warning: #efd78f; --bg-success: #99e6ab;
+    --text-danger: #330000; --text-warning: #332600; --text-success: #00330c;
 }
 @media (prefers-color-scheme: dark) {
     body {
         --bg-color: #1b1e20; --text-color: #c8c8c8; --emph-color: #e4e4e4;
-        --text-danger: #f5c6cb; --text-warning: #ffeeba; --text-success: #c3e6cb;
-        --bg-danger: #721c24; --bg-warning: #856404; --bg-success: #155724;
+        --text-danger: #f28c8c; --text-warning: #efd78f; --text-success: #99e6ab;
+        --bg-danger: #330000; --bg-warning: #332600; --bg-success: #00330c;
     }
 }
 
