@@ -4,13 +4,14 @@ import os.path
 import json
 import dataclasses
 import subprocess
+from collections.abc import Mapping
 from typing import NamedTuple, Optional, TextIO
 
 from .node import Node, LeafNode, InternalNode, IfNode, FrozenIfNode, InfoNode
 from .node import PrintAttr
 from .terminal import termPrint
 from .htmlGen import HtmlWriter
-from .types import JsonVal
+from .types import JsonVal, namedTupleFromMap, EMPTY_MAP
 
 
 PKG_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -203,12 +204,12 @@ def printGraphViz(root: Node, file: TextIO) -> None:
 SAVE_FORMATS = ('txt', 'dot', 'svg', 'json')
 
 
-def saveTree(dtree: Node, fpath: str) -> None:
+def saveTree(dtree: Node, fpath: str, options: Mapping[str, object] = EMPTY_MAP) -> None:
     basePath, ext = os.path.splitext(fpath)
     if ext == '.txt':
         with open(fpath, 'w') as fp:
-            options = PrintOptions(file=fp, lineNoCols=3, marginCols=3)
-            printTree(dtree, options)
+            po = namedTupleFromMap({'file': fp} | options, PrintOptions)
+            printTree(dtree, po)
     elif ext == '.dot':
         with open(fpath, 'w') as fp:
             printGraphViz(dtree, fp)
@@ -223,8 +224,8 @@ def saveTree(dtree: Node, fpath: str) -> None:
             json.dump(jsonObj, fp, indent=4)
     elif ext == '.html':
         with open(fpath, 'w') as fp:
-            options = HtmlOptions(file=fp)
-            dtreeToHtml(dtree, options)
+            ho = namedTupleFromMap({'file': fp} | options, HtmlOptions)
+            dtreeToHtml(dtree, ho)
     else:
         raise ValueError('unsupported output extension ' + ext)
 

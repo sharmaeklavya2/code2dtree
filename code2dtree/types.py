@@ -1,13 +1,17 @@
 from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Protocol, TypeVar, Union
+from types import MappingProxyType
+from typing import Any, Protocol, TypeVar, Union
 from fractions import Fraction
 
 
+T = TypeVar('T')
 CompT = TypeVar('CompT', bound='Comparable')
 Real = int | float | Fraction
 JsonVal = Union[None, bool, str, float, int, Sequence['JsonVal'], Mapping[str, 'JsonVal']]
+
+EMPTY_MAP: Mapping[Any, Any] = MappingProxyType({})
 
 
 def validateRealness(x: object) -> Real:
@@ -51,3 +55,8 @@ class Comparable(Protocol):
 
     def __ge__(self: CompT, other: CompT) -> bool:
         return (not self < other)
+
+
+def namedTupleFromMap(d: Mapping[str, object], ntCls: type[T]) -> T:
+    return ntCls(*[d.get(field, defVal) for field, defVal
+        in ntCls._field_defaults.items()])  # type: ignore[attr-defined]
