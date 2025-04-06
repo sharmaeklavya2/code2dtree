@@ -3,7 +3,7 @@ from enum import StrEnum
 from collections.abc import Collection, Iterable, Mapping, Sequence, Set
 from typing import Optional, TextIO, TypeVar
 
-from .expr import Var, Expr, BinExpr, UnExpr
+from .expr import Var, Expr, BinExpr, UnExpr, prettyExprRepr
 from .aggExpr import AggExpr
 from .treeExplorer import TreeExplorer
 from .types import Real, validateRealness
@@ -255,17 +255,20 @@ def displayConstraints(d: ConstrMap, fp: TextIO) -> None:
 
 
 class LinConstrTreeExplorer(TreeExplorer):
-    def __init__(self, baseConstraintsList: Sequence[Expr | bool] = (),
-            ineqMode: IneqMode = IneqMode.exact, storeLeafConstr: bool = True) -> None:
+    def __init__(self, baseConstraintsList: Sequence[Expr | bool] = (), ineqMode: IneqMode = IneqMode.exact,
+            storeLeafConstr: bool = True, debugFp: Optional[TextIO] = None) -> None:
         super().__init__()
         self.baseConstraintsDict: ConstrDict = {}
         self.ineqMode = ineqMode
+        self.debugFp = debugFp
         for expr in baseConstraintsList:
             addConstrToDict(expr, True, self.baseConstraintsDict, ineqMode)
         self.constraints: ConstrDict = dict(self.baseConstraintsDict)
         self.storeLeafConstr = storeLeafConstr
 
     def noteIf(self, expr: Expr, b: bool) -> None:
+        if self.debugFp is not None:
+            print(f'noteIf({prettyExprRepr(expr)}, {b})', file=self.debugFp)
         addConstrToDict(expr, b, self.constraints, self.ineqMode)
 
     def decideIf(self, expr: Expr) -> tuple[bool, bool, Optional[Expr]]:
@@ -280,18 +283,23 @@ class LinConstrTreeExplorer(TreeExplorer):
         trueInt = opToInterval(op, rhs)
         if oldInt is None:
             self.constraints[coeffs] = falseInt
-            return (False, True, linExpr)
+            retval = (False, True, linExpr)
         else:
             assert not oldInt.isEmpty()
             falseInt2, trueInt2 = oldInt.intersect(falseInt), oldInt.intersect(trueInt)
             if falseInt2.isEmpty():
                 self.constraints[coeffs] = trueInt2
-                return (True, False, linExpr)
+                retval = (True, False, linExpr)
             else:
                 self.constraints[coeffs] = falseInt2
-                return (False, not trueInt2.isEmpty(), linExpr)
+                retval = (False, not trueInt2.isEmpty(), linExpr)
+        if self.debugFp is not None:
+            print(f'decideIf({prettyExprRepr(expr)}) = ({retval[0]}, {retval[1]}, …)', file=self.debugFp)
+        return retval
 
     def noteReturn(self, expr: object) -> Optional[ConstrMap]:
+        if self.debugFp is not None:
+            print(f'noteReturn({prettyExprRepr(expr)})', file=self.debugFp)
         constraints = self.constraints
         self.constraints = dict(self.baseConstraintsDict)
         if self.storeLeafConstr:
